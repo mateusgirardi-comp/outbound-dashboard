@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Outbound Dashboard — Comp</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:          #0f172a;
+      --card:        #1e293b;
+      --card-alt:    #162032;
+      --border:      #2d3f57;
+      --text:        #f1f5f9;
+      --muted:       #94a3b8;
+      --accent:      #3b82f6;
+      --green:       #22c55e;
+      --green-light: #16a34a22;
+      --yellow:      #eab308;
+      --red:         #ef4444;
+      --cath:        #a855f7;
+      --mat:         #3b82f6;
+      --radius:      10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px; line-height: 1.5;
+    }
+
+    /* ── Loading / Error ── */
+    #loading, #error-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100vh; gap: 16px; color: var(--muted);
+    }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #error-state { display: none; }
+    #error-state h2 { color: var(--red); font-size: 18px; }
+
+    /* ── Header ── */
+    header {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 14px 24px; display: flex; align-items: center;
+      justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .logo {
+      width: 32px; height: 32px; background: var(--accent);
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-weight: 700; font-size: 16px; color: #fff;
+    }
+    header h1 { font-size: 16px; font-weight: 600; }
+    header .subtitle { font-size: 12px; color: var(--muted); }
+
+    .header-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    /* Sprint tabs */
+    .sprint-tabs { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; gap: 2px; }
+    .sprint-tab {
+      padding: 5px 12px; border-radius: 6px; border: none;
+      background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 13px; font-weight: 500; transition: all 0.15s;
+    }
+    .sprint-tab:hover { color: var(--text); }
+    .sprint-tab.active { background: var(--card); color: var(--text); box-shadow: 0 1px 3px #0004; }
+
+    /* BDR toggle */
+    .bdr-toggle { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; gap: 2px; }
+    .bdr-btn {
+      padding: 5px 12px; border-radius: 6px; border: none;
+      background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 13px; font-weight: 500; transition: all 0.15s;
+    }
+    .bdr-btn:hover { color: var(--text); }
+    .bdr-btn.active[data-bdr="total"] { background: var(--accent);   color: #fff; }
+    .bdr-btn.active[data-bdr="cath"]  { background: var(--cath);     color: #fff; }
+    .bdr-btn.active[data-bdr="mat"]   { background: var(--mat);      color: #fff; }
+
+    .last-updated { font-size: 11px; color: var(--muted); }
+    .refresh-btn {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--muted); padding: 4px 10px; cursor: pointer; font-size: 12px;
+      transition: all 0.15s;
+    }
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Main layout ── */
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── KPI Cards ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px; margin-bottom: 24px;
+    }
+    @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+    .kpi-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+    }
+    .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+    .kpi-value { font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+    .kpi-sub   { font-size: 12px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+    .kpi-sub span { display: flex; align-items: center; gap: 4px; }
+    .dot-cath { width: 7px; height: 7px; border-radius: 50%; background: var(--cath); display: inline-block; }
+    .dot-mat  { width: 7px; height: 7px; border-radius: 50%; background: var(--mat);  display: inline-block; }
+    .kpi-green  { color: var(--green); }
+    .kpi-yellow { color: var(--yellow); }
+    .kpi-red    { color: var(--red); }
+
+    /* ── Section headers ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .section-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .section-sub   { font-size: 12px; color: var(--muted); }
+
+    /* ── Campaign Table ── */
+    .table-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow-x: auto; margin-bottom: 24px;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    thead th {
+      padding: 10px 14px; text-align: left; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+      white-space: nowrap; background: var(--card);
+    }
+    thead th:not(:first-child) { text-align: center; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #ffffff06; }
+    tbody tr.totals-row { background: var(--card-alt); font-weight: 600; }
+    tbody td {
+      padding: 10px 14px; font-size: 13px; white-space: nowrap;
+    }
+    tbody td:not(:first-child) { text-align: center; }
+    .campaign-name { font-weight: 500; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-green  { background: var(--green-light); color: var(--green); }
+    .badge-yellow { background: #eab30820; color: var(--yellow); }
+    .badge-red    { background: #ef444420; color: var(--red); }
+    .badge-muted  { background: #ffffff10; color: var(--muted); }
+    .tag-cath { color: var(--cath); font-weight: 600; font-size: 12px; }
+    .tag-mat  { color: var(--mat);  font-weight: 600; font-size: 12px; }
+
+    /* ── Charts ── */
+    .charts-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; margin-bottom: 24px;
+    }
+    @media (max-width: 800px) { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .chart-card canvas { max-height: 260px; }
+
+    /* ── BDR Comparison ── */
+    .bdr-comparison {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; margin-bottom: 24px;
+    }
+    @media (max-width: 700px) { .bdr-comparison { grid-template-columns: 1fr; } }
+    .bdr-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .bdr-card-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px;
+    }
+    .bdr-name { font-size: 15px; font-weight: 700; }
+    .bdr-pill {
+      padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .bdr-pill-cath { background: #a855f722; color: var(--cath); }
+    .bdr-pill-mat  { background: #3b82f622; color: var(--mat); }
+    .bdr-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .bdr-metric { }
+    .bdr-metric-label { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+    .bdr-metric-value { font-size: 22px; font-weight: 700; }
+    .bdr-metric-sub   { font-size: 11px; color: var(--muted); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 24px;
+      font-size: 11px; color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    #dashboard { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <span>Carregando dados da planilha…</span>
+</div>
+
+<!-- Error -->
+<div id="error-state">
+  <h2>Erro ao carregar dados</h2>
+  <p id="error-msg"></p>
+  <button class="refresh-btn" onclick="init()" style="margin-top:12px">Tentar novamente</button>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+
+  <header>
+    <div class="header-left">
+      <div class="logo">C</div>
+      <div>
+        <h1>Outbound Dashboard</h1>
+        <div class="subtitle" id="header-subtitle">Carregando…</div>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="sprint-tabs" id="sprint-tabs">
+        <button class="sprint-tab active" data-sprint="all">Todos</button>
+        <button class="sprint-tab" data-sprint="S1">S1</button>
+        <button class="sprint-tab" data-sprint="S2">S2</button>
+        <button class="sprint-tab" data-sprint="S3">S3</button>
+        <button class="sprint-tab" data-sprint="S4">S4</button>
+      </div>
+      <div class="bdr-toggle">
+        <button class="bdr-btn active" data-bdr="total">Total</button>
+        <button class="bdr-btn" data-bdr="cath">Cath</button>
+        <button class="bdr-btn" data-bdr="mat">Mat</button>
+      </div>
+      <span class="last-updated" id="last-updated"></span>
+      <button class="refresh-btn" onclick="refreshData()">↻ Atualizar</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <!-- Campaign Table -->
+    <div class="section-header">
+      <div>
+        <div class="section-title">Campanhas</div>
+        <div class="section-sub" id="table-subtitle"></div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="campaign-table">
+        <thead>
+          <tr>
+            <th>Campanha</th>
+            <th>Empresas</th>
+            <th>Contatos</th>
+            <th>C/E</th>
+            <th>Msgs Enviadas</th>
+            <th>MQLs</th>
+            <th>Conv%</th>
+            <th>Msgs / MQL</th>
+          </tr>
+        </thead>
+        <tbody id="campaign-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="section-header">
+          <div class="section-title">Mensagens por Campanha</div>
+        </div>
+        <canvas id="chart-msgs"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="section-header">
+          <div class="section-title">Mensagens por Sprint</div>
+        </div>
+        <canvas id="chart-sprints"></canvas>
+      </div>
+    </div>
+
+    <!-- BDR Comparison -->
+    <div class="section-header">
+      <div class="section-title">Cath vs Mat</div>
+    </div>
+    <div class="bdr-comparison" id="bdr-comparison"></div>
+
+  </main>
+
+  <footer id="footer-text"></footer>
+
+</div>
+
+<script>
+// ============================================================
+// CONFIG — substitua pela URL do seu Apps Script após o deploy
+// ============================================================
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+// ============================================================
+// STATE
+// ============================================================
+let _data    = null;
+let _sprint  = 'all';
+let _bdr     = 'total';
+let _charts  = {};
+
+// ============================================================
+// BOOTSTRAP
+// ============================================================
+async function init() {
+  show('loading');
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    _data = await res.json();
+    render();
+    show('dashboard');
+    scheduleRefresh();
+  } catch (e) {
+    document.getElementById('error-msg').textContent = e.message;
+    show('error-state');
+  }
+}
+
+function show(id) {
+  ['loading','error-state','dashboard'].forEach(el => {
+    document.getElementById(el).style.display = (el === id) ? '' : 'none';
+  });
+}
+
+function scheduleRefresh() {
+  setTimeout(refreshData, 5 * 60 * 1000);
+}
+
+async function refreshData() {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    _data = await res.json();
+    render();
+    scheduleRefresh();
+  } catch(e) {
+    console.warn('Refresh failed:', e.message);
+    scheduleRefresh();
+  }
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+document.getElementById('sprint-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.sprint-tab');
+  if (!btn) return;
+  _sprint = btn.dataset.sprint;
+  document.querySelectorAll('.sprint-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+});
+
+document.querySelector('.bdr-toggle').addEventListener('click', e => {
+  const btn = e.target.closest('.bdr-btn');
+  if (!btn) return;
+  _bdr = btn.dataset.bdr;
+  document.querySelectorAll('.bdr-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+});
+
+// ============================================================
+// HELPERS
+// ============================================================
+function getVal(metric, bdr, sprint) {
+  const b = bdr === 'total' ? 'total' : bdr;
+  const s = sprint === 'all'  ? 'all'  : sprint;
+  return (metric && metric[b] && metric[b][s] != null) ? metric[b][s] : 0;
+}
+
+function getEmp(campaign, bdr) {
+  if (!campaign || !campaign.empresas) return 0;
+  return bdr === 'total' ? campaign.empresas.total
+       : bdr === 'cath'  ? campaign.empresas.cath
+       : campaign.empresas.mat;
+}
+
+function getCon(campaign, bdr) {
+  if (!campaign || !campaign.contatos) return 0;
+  return bdr === 'total' ? campaign.contatos.total
+       : bdr === 'cath'  ? campaign.contatos.cath
+       : campaign.contatos.mat;
+}
+
+function pct(val) {
+  return (val * 100).toFixed(1) + '%';
+}
+
+function convClass(val) {
+  if (val >= 0.2)  return 'badge-green';
+  if (val >= 0.05) return 'badge-yellow';
+  return val === 0 ? 'badge-muted' : 'badge-red';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  if (!_data) return;
+  renderHeader();
+  renderKPIs();
+  renderTable();
+  renderCharts();
+  renderBDRComparison();
+}
+
+function renderHeader() {
+  const sprints = _data.sprints || {};
+  const s = sprints[_sprint];
+  document.getElementById('header-subtitle').textContent =
+    s ? `Sprint ${_sprint}: ${s.label}` : 'Todos os sprints';
+  document.getElementById('last-updated').textContent =
+    'Atualizado: ' + fmtDate(_data.lastUpdated);
+  document.getElementById('footer-text').textContent =
+    'Comp Outbound Dashboard · Atualizado em ' + fmtDate(_data.lastUpdated);
+}
+
+function renderKPIs() {
+  const t   = _data.totals;
+  const emp = getEmp({ empresas: t.empresas }, _bdr);
+  const con = getCon({ contatos: t.contatos }, _bdr);
+  const msg = getVal(t.mensagens, _bdr, _sprint);
+  const mql = getVal(t.mqls,      _bdr, _sprint);
+  const convRate = emp > 0 ? mql / emp : 0;
+
+  const ce = emp > 0 ? (con / emp).toFixed(2) : '—';
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Empresas</div>
+      <div class="kpi-value">${emp}</div>
+      <div class="kpi-sub">
+        <span><span class="dot-cath"></span>${t.empresas.cath} Cath</span>
+        <span><span class="dot-mat"></span>${t.empresas.mat} Mat</span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Contatos</div>
+      <div class="kpi-value">${con}</div>
+      <div class="kpi-sub"><span>C/E: ${ce}</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Mensagens Enviadas</div>
+      <div class="kpi-value">${msg}</div>
+      <div class="kpi-sub">
+        <span><span class="dot-cath"></span>${getVal(t.mensagens,'cath',_sprint)} Cath</span>
+        <span><span class="dot-mat"></span>${getVal(t.mensagens,'mat',_sprint)} Mat</span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">MQLs</div>
+      <div class="kpi-value kpi-green">${mql}</div>
+      <div class="kpi-sub">
+        <span><span class="dot-cath"></span>${getVal(t.mqls,'cath',_sprint)} Cath</span>
+        <span><span class="dot-mat"></span>${getVal(t.mqls,'mat',_sprint)} Mat</span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Conversão (empresa)</div>
+      <div class="kpi-value ${convRate >= 0.1 ? 'kpi-green' : convRate >= 0.05 ? 'kpi-yellow' : 'kpi-red'}">
+        ${pct(convRate)}
+      </div>
+      <div class="kpi-sub">
+        <span>${mql > 0 && msg > 0 ? (msg/mql).toFixed(1) + ' msgs/MQL' : '—'}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderTable() {
+  const campaigns = _data.campaigns || [];
+  const t         = _data.totals;
+
+  const sprintLabel = _sprint === 'all' ? 'Total' : _sprint;
+  document.getElementById('table-subtitle').textContent =
+    `${campaigns.length} campanhas · ${sprintLabel}`;
+
+  function row(item, isTotal) {
+    const emp  = getEmp(item, _bdr);
+    const con  = getCon(item, _bdr);
+    const msg  = getVal(item.mensagens, _bdr, _sprint);
+    const mql  = getVal(item.mqls,      _bdr, _sprint);
+    const ce   = emp > 0 ? (con / emp).toFixed(2) : '—';
+    const conv = emp > 0 ? mql / emp : 0;
+    const mpm  = mql > 0 ? (msg / mql).toFixed(1) : '—';
+
+    return `
+      <tr class="${isTotal ? 'totals-row' : ''}">
+        <td class="campaign-name">${isTotal ? '📊 Total' : item.name}</td>
+        <td>${emp}</td>
+        <td>${con}</td>
+        <td>${ce}</td>
+        <td>${msg}</td>
+        <td>${mql > 0 ? `<span class="badge badge-green">${mql}</span>` : `<span style="color:var(--muted)">${mql}</span>`}</td>
+        <td><span class="badge ${convClass(conv)}">${pct(conv)}</span></td>
+        <td style="color:var(--muted)">${mpm}</td>
+      </tr>`;
+  }
+
+  const rows = campaigns.map(c => row(c, false)).join('');
+  const totalsRow = row({ name: 'Total', empresas: t.empresas, contatos: t.contatos, mensagens: t.mensagens, mqls: t.mqls }, true);
+
+  document.getElementById('campaign-tbody').innerHTML = rows + totalsRow;
+}
+
+function renderCharts() {
+  const campaigns = _data.campaigns || [];
+  const t         = _data.totals;
+  const labels    = campaigns.map(c => c.name);
+
+  // Chart 1: Msgs por campanha (Cath vs Mat)
+  const msgsData = {
+    labels,
+    datasets: [
+      {
+        label: 'Cath',
+        data: campaigns.map(c => getVal(c.mensagens, 'cath', _sprint)),
+        backgroundColor: '#a855f780',
+        borderColor: '#a855f7',
+        borderWidth: 1
+      },
+      {
+        label: 'Mat',
+        data: campaigns.map(c => getVal(c.mensagens, 'mat', _sprint)),
+        backgroundColor: '#3b82f680',
+        borderColor: '#3b82f6',
+        borderWidth: 1
+      }
+    ]
+  };
+
+  destroyChart('chart-msgs');
+  _charts['chart-msgs'] = new Chart(document.getElementById('chart-msgs'), {
+    type: 'bar',
+    data: msgsData,
+    options: chartOptions('Mensagens enviadas')
+  });
+
+  // Chart 2: Msgs por sprint (total, Cath, Mat)
+  const sprintLabels = ['S1','S2','S3','S4'];
+  const sprintData = {
+    labels: sprintLabels,
+    datasets: [
+      {
+        label: 'Total',
+        data: sprintLabels.map(s => getVal(t.mensagens, 'total', s)),
+        backgroundColor: '#64748b80',
+        borderColor: '#64748b',
+        borderWidth: 1
+      },
+      {
+        label: 'Cath',
+        data: sprintLabels.map(s => getVal(t.mensagens, 'cath', s)),
+        backgroundColor: '#a855f780',
+        borderColor: '#a855f7',
+        borderWidth: 1
+      },
+      {
+        label: 'Mat',
+        data: sprintLabels.map(s => getVal(t.mensagens, 'mat', s)),
+        backgroundColor: '#3b82f680',
+        borderColor: '#3b82f6',
+        borderWidth: 1
+      }
+    ]
+  };
+
+  destroyChart('chart-sprints');
+  _charts['chart-sprints'] = new Chart(document.getElementById('chart-sprints'), {
+    type: 'bar',
+    data: sprintData,
+    options: chartOptions('Mensagens por sprint')
+  });
+}
+
+function renderBDRComparison() {
+  const t = _data.totals;
+  function bdrCard(key, label, colorClass, pillClass) {
+    const emp  = t.empresas[key];
+    const con  = t.contatos[key];
+    const msg  = getVal(t.mensagens, key, _sprint);
+    const mql  = getVal(t.mqls,      key, _sprint);
+    const conv = emp > 0 ? (mql / emp * 100).toFixed(1) : '0.0';
+    const mpm  = mql > 0 ? (msg / mql).toFixed(1) : '—';
+    return `
+      <div class="bdr-card">
+        <div class="bdr-card-header">
+          <span class="bdr-name ${colorClass}">${label}</span>
+          <span class="bdr-pill ${pillClass}">${key.toUpperCase()}</span>
+        </div>
+        <div class="bdr-metrics">
+          <div class="bdr-metric">
+            <div class="bdr-metric-label">Empresas</div>
+            <div class="bdr-metric-value">${emp}</div>
+          </div>
+          <div class="bdr-metric">
+            <div class="bdr-metric-label">Contatos</div>
+            <div class="bdr-metric-value">${con}</div>
+          </div>
+          <div class="bdr-metric">
+            <div class="bdr-metric-label">Mensagens</div>
+            <div class="bdr-metric-value">${msg}</div>
+          </div>
+          <div class="bdr-metric">
+            <div class="bdr-metric-label">MQLs</div>
+            <div class="bdr-metric-value" style="color:var(--green)">${mql}</div>
+          </div>
+          <div class="bdr-metric">
+            <div class="bdr-metric-label">Conversão</div>
+            <div class="bdr-metric-value">${conv}%</div>
+          </div>
+          <div class="bdr-metric">
+            <div class="bdr-metric-label">Msgs / MQL</div>
+            <div class="bdr-metric-value" style="font-size:18px">${mpm}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('bdr-comparison').innerHTML =
+    bdrCard('cath', 'Catharina', 'tag-cath', 'bdr-pill-cath') +
+    bdrCard('mat',  'Mateus',    'tag-mat',  'bdr-pill-mat');
+}
+
+function destroyChart(id) {
+  if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+}
+
+function chartOptions(title) {
+  return {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: '#94a3b8', font: { size: 12 } } },
+      title:  { display: false }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#94a3b8', font: { size: 11 } },
+        grid:  { color: '#2d3f57' }
+      },
+      y: {
+        ticks: { color: '#94a3b8', font: { size: 11 } },
+        grid:  { color: '#2d3f57' }
+      }
+    }
+  };
+}
+
+// ============================================================
+// ENTRY
+// ============================================================
+init();
+</script>
+
+</body>
+</html>
