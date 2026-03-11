@@ -9,6 +9,9 @@ var SPRINT_CONFIG = [
   { name: 'S4', start: new Date('2026-03-25'), end: new Date('2026-04-01') }
 ];
 
+// ID da planilha de outbound
+var SPREADSHEET_ID = '1evy8peuLyilrhTndKHMbUgqDpWl55p8pCARax24TxGA';
+
 // Nome exato da aba de métricas (será ignorada no processamento)
 var METRICS_SHEET_NAME = 'Métricas';
 
@@ -28,7 +31,7 @@ function doGet(e) {
 // ============================================================
 
 function getData() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheets = ss.getSheets();
   var campaigns = [];
 
