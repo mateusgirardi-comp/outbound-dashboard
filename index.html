@@ -288,6 +288,90 @@
     }
 
     #dashboard { display: none; }
+
+    /* ── KPI clickable ── */
+    .kpi-card {
+      cursor: pointer;
+      transition: box-shadow 0.15s, transform 0.15s;
+    }
+    .kpi-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 500;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 32px 36px;
+      max-width: 480px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+      position: relative;
+      animation: modalIn 0.18s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to   { opacity: 1; transform: none; }
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 18px;
+      background: none; border: none; cursor: pointer;
+      font-size: 20px; color: var(--muted); line-height: 1;
+      font-family: inherit;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-kpi-label {
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted);
+      font-weight: 600; margin-bottom: 6px;
+    }
+    .modal-kpi-value {
+      font-size: 48px; font-weight: 700;
+      color: var(--accent); line-height: 1;
+      margin-bottom: 20px;
+    }
+    .modal-divider {
+      height: 1px; background: var(--border);
+      margin-bottom: 20px;
+    }
+    .modal-section-title {
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--muted);
+      font-weight: 600; margin-bottom: 8px;
+    }
+    .modal-desc {
+      font-size: 14px; color: var(--text);
+      line-height: 1.7; margin-bottom: 16px;
+    }
+    .modal-formula {
+      background: #f7f7f7;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 6px 6px 0;
+      padding: 10px 14px;
+      font-size: 13px; color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      margin-bottom: 16px;
+    }
+    .modal-breakdown {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .modal-bk-item { }
+    .modal-bk-label {
+      font-size: 11px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .modal-bk-value { font-size: 20px; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -303,6 +387,22 @@
   <h2>Erro ao carregar dados</h2>
   <p id="error-msg"></p>
   <button class="refresh-btn" onclick="init()" style="margin-top:12px;color:var(--accent);border-color:var(--accent);background:none">Tentar novamente</button>
+</div>
+
+<!-- KPI Modal -->
+<div class="modal-overlay" id="kpi-modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div class="modal-kpi-label" id="modal-label"></div>
+    <div class="modal-kpi-value" id="modal-value"></div>
+    <div class="modal-divider"></div>
+    <div class="modal-section-title">O que é</div>
+    <div class="modal-desc" id="modal-desc"></div>
+    <div class="modal-section-title">Como é calculado</div>
+    <div class="modal-formula" id="modal-formula"></div>
+    <div class="modal-section-title" id="modal-bk-title" style="display:none">Detalhes</div>
+    <div class="modal-breakdown" id="modal-breakdown"></div>
+  </div>
 </div>
 
 <!-- Dashboard -->
@@ -328,7 +428,6 @@
         <button class="bdr-btn" data-bdr="mat">Mat</button>
       </div>
       <span class="last-updated" id="last-updated"></span>
-      <button class="refresh-btn" onclick="refreshData()">↻ Atualizar</button>
     </div>
   </header>
 
@@ -514,7 +613,7 @@ function renderKPIs() {
   const mqlPct = Math.min(100, (mql / MQL_TARGET * 100)).toFixed(0);
 
   document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi-card">
+    <div class="kpi-card" onclick="openModal('empresas')">
       <div class="kpi-label">Empresas Únicas</div>
       <div class="kpi-value">${emp}</div>
       <div class="kpi-sub">
@@ -522,7 +621,7 @@ function renderKPIs() {
         <span><span class="dot-mat"></span>${t.empresas.mat} Mat</span>
       </div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card" onclick="openModal('contatos')">
       <div class="kpi-label">Contatos</div>
       <div class="kpi-value">${con}</div>
       <div class="kpi-sub">
@@ -530,12 +629,12 @@ function renderKPIs() {
         <span><span class="dot-mat"></span>${t.contatos.mat} Mat</span>
       </div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card" onclick="openModal('ce')">
       <div class="kpi-label">Contatos / Empresa</div>
       <div class="kpi-value">${ce}</div>
       <div class="kpi-sub"><span>por empresa única</span></div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card" onclick="openModal('msgs')">
       <div class="kpi-label">Mensagens Enviadas</div>
       <div class="kpi-value">${msg}</div>
       <div class="kpi-sub">
@@ -543,7 +642,7 @@ function renderKPIs() {
         <span><span class="dot-mat"></span>${getVal(t.mensagens,'mat',_sprint)} Mat</span>
       </div>
     </div>
-    <div class="kpi-card accent">
+    <div class="kpi-card accent" onclick="openModal('mqls')">
       <div class="kpi-label">MQLs</div>
       <div class="kpi-value red">${mql} <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${MQL_TARGET}</span></div>
       <div class="kpi-sub">
@@ -551,7 +650,7 @@ function renderKPIs() {
         <span><span class="dot-mat"></span>${getVal(t.mqls,'mat',_sprint)} Mat</span>
       </div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card" onclick="openModal('conv')">
       <div class="kpi-label">Conversão (empresa)</div>
       <div class="kpi-value ${convRate >= 0.1 ? 'green' : ''}">${pct(convRate)}</div>
       <div class="kpi-sub">
@@ -740,6 +839,130 @@ function chartOptions() {
       }
     }
   };
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(kpi) {
+  if (!_data) return;
+  const t   = _data.totals;
+  const emp = getEmp({ empresas: t.empresas }, _bdr);
+  const con = getCon({ contatos: t.contatos }, _bdr);
+  const msg = getVal(t.mensagens, _bdr, _sprint);
+  const mql = getVal(t.mqls,      _bdr, _sprint);
+  const ce  = emp > 0 ? (con / emp).toFixed(2) : '—';
+  const convRate = emp > 0 ? mql / emp : 0;
+
+  const defs = {
+    empresas: {
+      label: 'Empresas Únicas',
+      value: emp,
+      desc: 'Número de empresas distintas sendo prospectadas nas campanhas ativas. Se a mesma empresa aparece em duas campanhas diferentes, ela é contada apenas uma vez — garantindo que o número reflita o alcance real do outbound.',
+      formula: 'UNION(empresas de todas as campanhas)',
+      breakdown: [
+        { label: 'Cath', value: t.empresas.cath },
+        { label: 'Mat',  value: t.empresas.mat  },
+        { label: 'Total (com dedup)', value: t.empresas.total },
+        { label: 'Campanhas ativas', value: (_data.campaigns || []).length }
+      ]
+    },
+    contatos: {
+      label: 'Contatos',
+      value: con,
+      desc: 'Total de leads individuais (pessoas) prospectados. Cada linha na planilha com Nome e Empresa preenchidos conta como 1 contato. Diferente de Empresas, aqui não há deduplicação — o mesmo contato em campanhas diferentes é contado mais de uma vez.',
+      formula: 'SUM(linhas com nome + empresa preenchidos)',
+      breakdown: [
+        { label: 'Cath',  value: t.contatos.cath },
+        { label: 'Mat',   value: t.contatos.mat  },
+        { label: 'Total', value: t.contatos.total }
+      ]
+    },
+    ce: {
+      label: 'Contatos / Empresa (C/E)',
+      value: ce,
+      desc: 'Média de contatos prospectados por empresa única. Um C/E alto indica maior profundidade de penetração — estamos alcançando múltiplos stakeholders dentro de uma mesma empresa. Um C/E baixo sugere abordagem mais superficial (1 contato por empresa).',
+      formula: 'Total de Contatos ÷ Empresas Únicas',
+      breakdown: [
+        { label: 'Contatos', value: con },
+        { label: 'Empresas', value: emp }
+      ]
+    },
+    msgs: {
+      label: 'Mensagens Enviadas',
+      value: msg,
+      desc: 'Total de touchpoints enviados na cadência. Cada coluna "Data Envio" preenchida numa linha conta como 1 mensagem. Um único lead pode gerar múltiplas mensagens (ex: follow-up 1, follow-up 2, LinkedIn, etc.).',
+      formula: 'SUM(colunas "Data Envio" preenchidas)',
+      breakdown: [
+        { label: 'Cath',  value: getVal(t.mensagens,'cath',_sprint) },
+        { label: 'Mat',   value: getVal(t.mensagens,'mat',_sprint)  },
+        { label: 'Total', value: getVal(t.mensagens,'total',_sprint) },
+        { label: 'Msgs / Contato', value: con > 0 ? (msg/con).toFixed(1) : '—' }
+      ]
+    },
+    mqls: {
+      label: 'MQLs',
+      value: `${mql} / ${MQL_TARGET}`,
+      desc: `Lead qualificado pelo marketing que demonstrou interesse suficiente para entrar no pipeline de vendas. Um lead vira MQL quando o campo "Status Geral" na planilha é marcado como "MQL". Meta do mês: ${MQL_TARGET} MQLs. Progresso atual: ${((mql/MQL_TARGET)*100).toFixed(0)}%.`,
+      formula: 'COUNT(linhas onde Status Geral = "MQL")',
+      breakdown: [
+        { label: 'Cath',     value: getVal(t.mqls,'cath',_sprint) },
+        { label: 'Mat',      value: getVal(t.mqls,'mat',_sprint)  },
+        { label: 'Meta',     value: MQL_TARGET },
+        { label: 'Faltam',   value: Math.max(0, MQL_TARGET - mql) }
+      ]
+    },
+    conv: {
+      label: 'Conversão (empresa)',
+      value: pct(convRate),
+      desc: 'Taxa de conversão calculada sobre empresas únicas: quantas empresas prospectadas geraram ao menos um MQL. É a métrica principal de eficiência do outbound — mede a qualidade das listas e da abordagem, não apenas o volume.',
+      formula: 'MQLs ÷ Empresas Únicas',
+      breakdown: [
+        { label: 'MQLs',     value: mql },
+        { label: 'Empresas', value: emp },
+        { label: 'Conv% stakeholder', value: con > 0 ? pct(mql/con) : '—' },
+        { label: 'Msgs / MQL', value: mql > 0 ? (msg/mql).toFixed(1) : '—' }
+      ]
+    }
+  };
+
+  const d = defs[kpi];
+  if (!d) return;
+
+  document.getElementById('modal-label').textContent   = d.label;
+  document.getElementById('modal-value').textContent   = d.value;
+  document.getElementById('modal-desc').textContent    = d.desc;
+  document.getElementById('modal-formula').textContent = d.formula;
+
+  const bkEl    = document.getElementById('modal-breakdown');
+  const bkTitle = document.getElementById('modal-bk-title');
+  if (d.breakdown && d.breakdown.length) {
+    bkTitle.style.display = 'block';
+    bkEl.innerHTML = d.breakdown.map(b => `
+      <div class="modal-bk-item">
+        <div class="modal-bk-label">${b.label}</div>
+        <div class="modal-bk-value">${b.value}</div>
+      </div>`).join('');
+  } else {
+    bkTitle.style.display = 'none';
+    bkEl.innerHTML = '';
+  }
+
+  document.getElementById('kpi-modal').classList.add('open');
+  document.addEventListener('keydown', onModalEsc);
+}
+
+function closeModalDirect() {
+  document.getElementById('kpi-modal').classList.remove('open');
+  document.removeEventListener('keydown', onModalEsc);
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('kpi-modal')) closeModalDirect();
+}
+
+function onModalEsc(e) {
+  if (e.key === 'Escape') closeModalDirect();
 }
 
 init();
