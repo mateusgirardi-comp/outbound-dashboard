@@ -358,7 +358,7 @@
       border-radius: 0 6px 6px 0;
       padding: 10px 14px;
       font-size: 13px; color: var(--text);
-      font-family: 'SF Mono', 'Fira Code', monospace;
+      line-height: 1.6;
       margin-bottom: 16px;
     }
     .modal-breakdown {
@@ -858,13 +858,13 @@ function openModal(kpi) {
     empresas: {
       label: 'Empresas Únicas',
       value: emp,
-      desc: 'Número de empresas distintas sendo prospectadas nas campanhas ativas. Se a mesma empresa aparece em duas campanhas diferentes, ela é contada apenas uma vez — garantindo que o número reflita o alcance real do outbound.',
-      formula: 'UNION(empresas de todas as campanhas)',
+      desc: 'Número de empresas distintas sendo prospectadas. Se a mesma empresa aparece em duas campanhas diferentes, ela é contada apenas uma vez — garantindo que o número reflita o alcance real do outbound, sem inflar o total.',
+      formula: `Pegamos a lista de empresas de cada campanha e juntamos tudo em uma lista única, removendo repetições. Por exemplo: se "Nubank" aparece na Campanha A e na Campanha B, ela entra só 1 vez no total. A soma bruta seria ${(_data.campaigns||[]).reduce((s,c)=>s+c.empresas.total,0)} empresas — mas após remover as que aparecem em mais de uma campanha, chegamos em ${t.empresas.total}.`,
       breakdown: [
-        { label: 'Cath', value: t.empresas.cath },
-        { label: 'Mat',  value: t.empresas.mat  },
-        { label: 'Total (com dedup)', value: t.empresas.total },
-        { label: 'Campanhas ativas', value: (_data.campaigns || []).length }
+        { label: 'Cath',  value: t.empresas.cath },
+        { label: 'Mat',   value: t.empresas.mat  },
+        { label: 'Campanhas ativas', value: (_data.campaigns || []).length },
+        { label: 'Duplicatas removidas', value: (_data.campaigns||[]).reduce((s,c)=>s+c.empresas.total,0) - t.empresas.total }
       ]
     },
     contatos: {
