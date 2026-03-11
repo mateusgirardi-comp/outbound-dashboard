@@ -870,12 +870,13 @@ function openModal(kpi) {
     contatos: {
       label: 'Contatos',
       value: con,
-      desc: 'Total de leads individuais (pessoas) prospectados. Cada linha na planilha com Nome e Empresa preenchidos conta como 1 contato. Diferente de Empresas, aqui não há deduplicação — o mesmo contato em campanhas diferentes é contado mais de uma vez.',
-      formula: 'SUM(linhas com nome + empresa preenchidos)',
+      desc: 'Total de pessoas prospectadas. Uma empresa pode ter mais de um contato — por exemplo, o CEO e o CFO da mesma empresa são 2 contatos. Cada linha na planilha com Nome e Empresa preenchidos vale 1 contato.',
+      formula: `Contamos todas as linhas preenchidas (com nome e empresa) em cada campanha. O número de contatos é sempre maior ou igual ao de empresas: se C/E = ${con > 0 && emp > 0 ? (con/emp).toFixed(1) : '—'}, significa que em média prospectamos ${con > 0 && emp > 0 ? (con/emp).toFixed(1) : '—'} pessoas por empresa.`,
       breakdown: [
         { label: 'Cath',  value: t.contatos.cath },
         { label: 'Mat',   value: t.contatos.mat  },
-        { label: 'Total', value: t.contatos.total }
+        { label: 'Empresas únicas', value: t.empresas.total },
+        { label: 'Média por empresa', value: t.empresas.total > 0 ? (t.contatos.total / t.empresas.total).toFixed(1) : '—' }
       ]
     },
     ce: {
