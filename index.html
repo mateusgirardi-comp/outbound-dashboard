@@ -226,15 +226,13 @@
 
   <header>
     <div class="header-left">
-      <div class="logo">C</div>
       <div>
         <h1>Outbound Dashboard</h1>
-        <div class="subtitle" id="header-subtitle">Carregando…</div>
       </div>
     </div>
     <div class="header-controls">
       <div class="sprint-tabs" id="sprint-tabs">
-        <button class="sprint-tab active" data-sprint="all">Todos</button>
+        <button class="sprint-tab active" data-sprint="all">Consolidado</button>
         <button class="sprint-tab" data-sprint="S1">S1</button>
         <button class="sprint-tab" data-sprint="S2">S2</button>
         <button class="sprint-tab" data-sprint="S3">S3</button>
@@ -444,8 +442,6 @@ function render() {
 function renderHeader() {
   const sprints = _data.sprints || {};
   const s = sprints[_sprint];
-  document.getElementById('header-subtitle').textContent =
-    s ? `Sprint ${_sprint}: ${s.label}` : 'Todos os sprints';
   document.getElementById('last-updated').textContent =
     'Atualizado: ' + fmtDate(_data.lastUpdated);
   document.getElementById('footer-text').textContent =
