@@ -520,7 +520,7 @@ function renderTable() {
     const mql  = getVal(item.mqls,      _bdr, _sprint);
     const ce   = emp > 0 ? (con / emp).toFixed(2) : '—';
     const conv = emp > 0 ? mql / emp : 0;
-    const mpm  = mql > 0 ? (msg / mql).toFixed(1) : '—';
+    const mpm  = mql > 0 ? (msg / mql).toFixed(1) : (msg > 0 ? msg : '—');
 
     return `
       <tr class="${isTotal ? 'totals-row' : ''}">
@@ -619,7 +619,7 @@ function renderBDRComparison() {
     const msg  = getVal(t.mensagens, key, _sprint);
     const mql  = getVal(t.mqls,      key, _sprint);
     const conv = emp > 0 ? (mql / emp * 100).toFixed(1) : '0.0';
-    const mpm  = mql > 0 ? (msg / mql).toFixed(1) : '—';
+    const mpm  = mql > 0 ? (msg / mql).toFixed(1) : (msg > 0 ? msg : '—');
     return `
       <div class="bdr-card">
         <div class="bdr-card-header">
