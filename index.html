@@ -311,7 +311,8 @@
 // ============================================================
 // CONFIG — substitua pela URL do seu Apps Script após o deploy
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzmOoDKMCbNHA0chB0ugzVUhOphp_8NWzHJJ9XjaUiuC6_TbWHlXo1wrnNaHx9L70eY/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSTS6aaZKM6rNe543OnBkTxE3YnE_PjMJSZVdGq1ucVhVN7AM0eCWA2l87UbiZkz8i/exec';
+const MQL_TARGET = 115;
 
 // ============================================================
 // STATE
@@ -327,19 +328,14 @@ let _charts  = {};
 async function init() {
   show('loading');
   try {
-    console.log('Fetching:', APPS_SCRIPT_URL);
     const res = await fetch(APPS_SCRIPT_URL);
-    console.log('Response status:', res.status, 'ok:', res.ok);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
-    console.log('Response preview:', text.slice(0, 200));
     _data = JSON.parse(text);
-    console.log('Data loaded:', _data.campaigns?.length, 'campaigns');
     render();
     show('dashboard');
     scheduleRefresh();
   } catch (e) {
-    console.error('Error:', e);
     document.getElementById('error-msg').textContent = e.message;
     show('error-state');
   }
@@ -491,7 +487,7 @@ function renderKPIs() {
     </div>
     <div class="kpi-card">
       <div class="kpi-label">MQLs</div>
-      <div class="kpi-value kpi-green">${mql}</div>
+      <div class="kpi-value kpi-green">${mql} <span style="font-size:16px;font-weight:400;color:var(--muted)">/ ${MQL_TARGET}</span></div>
       <div class="kpi-sub">
         <span><span class="dot-cath"></span>${getVal(t.mqls,'cath',_sprint)} Cath</span>
         <span><span class="dot-mat"></span>${getVal(t.mqls,'mat',_sprint)} Mat</span>

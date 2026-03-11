@@ -25,9 +25,56 @@ var IGNORED_SHEETS = [
 // ============================================================
 
 function doGet(e) {
+  var params = e && e.parameter ? e.parameter : {};
+  if (params.debug === 'mqls') {
+    return ContentService
+      .createTextOutput(JSON.stringify(getDebugMqls()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService
     .createTextOutput(JSON.stringify(getData()))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getDebugMqls() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheets = ss.getSheets();
+  var rows = [];
+
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = sheets[i];
+    var name = sheet.getName();
+    var allValues = sheet.getDataRange().getValues();
+    if (allValues.length < 3) continue;
+
+    var headers = allValues[1].map(function(h) { return String(h).trim(); });
+    if (!isCampaignSheet(name, headers)) continue;
+
+    var nomeIdx    = findColIdx(headers, COL_ALIASES.nome);
+    var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
+    var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
+    var statusIdx  = findColIdx(headers, COL_ALIASES.status);
+
+    for (var r = 2; r < allValues.length; r++) {
+      var row = allValues[r];
+      var statusRaw = statusIdx >= 0 ? row[statusIdx] : '';
+      var statusStr = String(statusRaw).trim();
+      if (statusStr.toUpperCase() === 'MQL') {
+        var nome = String(row[nomeIdx] || '').trim();
+        var empresa = String(row[empresaIdx] || '').trim();
+        rows.push({
+          campaign: name,
+          nome: nome,
+          empresa: empresa,
+          bdr: String(row[bdrIdx] || '').trim(),
+          statusRaw: statusStr,
+          skipped: (!nome || !empresa)
+        });
+      }
+    }
+  }
+
+  return { count: rows.length, mqls: rows };
 }
 
 // ============================================================
@@ -168,7 +215,7 @@ function processCampaignSheet(sheet) {
     }
 
     // MQLs
-    if (statusGeral === 'MQL') {
+    if (statusGeral.toUpperCase() === 'MQL') {
       var mqlDate = null;
       for (var q = 0; q < dataEnvioIdxs.length; q++) {
         var dv = row[dataEnvioIdxs[q]];
