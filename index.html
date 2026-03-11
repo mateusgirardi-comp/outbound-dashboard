@@ -5,28 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Outbound Dashboard — Comp</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg:          #0f172a;
-      --card:        #1e293b;
-      --card-alt:    #162032;
-      --border:      #2d3f57;
-      --text:        #f1f5f9;
-      --muted:       #94a3b8;
-      --accent:      #3b82f6;
-      --green:       #22c55e;
-      --green-light: #16a34a22;
-      --yellow:      #eab308;
-      --red:         #ef4444;
-      --cath:        #a855f7;
-      --mat:         #3b82f6;
-      --radius:      10px;
+    @font-face {
+      font-family: 'Igual';
+      src: local('Igual');
+      font-display: swap;
     }
+
+    :root {
+      --bg:           #F5F5F5;
+      --card:         #FFFFFF;
+      --border:       #E8E8E8;
+      --text:         #111111;
+      --muted:        #888888;
+      --accent:       #F4364C;
+      --accent-dark:  #C92236;
+      --accent-light: #FFF0F1;
+      --green:        #16a34a;
+      --green-light:  #f0fdf4;
+      --yellow:       #ca8a04;
+      --yellow-light: #fefce8;
+      --red:          #F4364C;
+      --cath:         #F4364C;
+      --mat:          #111111;
+      --radius:       10px;
+      --shadow:       0 1px 4px rgba(0,0,0,0.07);
+      --shadow-md:    0 4px 16px rgba(0,0,0,0.08);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      background: var(--bg); color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px; line-height: 1.5;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Igual', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
     }
 
     /* ── Loading / Error ── */
@@ -35,171 +52,237 @@
       justify-content: center; height: 100vh; gap: 16px; color: var(--muted);
     }
     .spinner {
-      width: 36px; height: 36px; border: 3px solid var(--border);
-      border-top-color: var(--accent); border-radius: 50%;
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     #error-state { display: none; }
-    #error-state h2 { color: var(--red); font-size: 18px; }
+    #error-state h2 { color: var(--accent); font-size: 18px; }
 
     /* ── Header ── */
     header {
-      background: var(--card); border-bottom: 1px solid var(--border);
-      padding: 14px 24px; display: flex; align-items: center;
+      background: var(--accent);
+      padding: 0 32px;
+      display: flex; align-items: center;
       justify-content: space-between; flex-wrap: wrap; gap: 12px;
       position: sticky; top: 0; z-index: 100;
+      height: 56px;
     }
-    .header-left { display: flex; align-items: center; gap: 10px; }
-    .logo {
-      width: 32px; height: 32px; background: var(--accent);
-      border-radius: 8px; display: flex; align-items: center;
-      justify-content: center; font-weight: 700; font-size: 16px; color: #fff;
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    header h1 {
+      font-size: 15px; font-weight: 700;
+      color: #fff; letter-spacing: 0.01em;
     }
-    header h1 { font-size: 16px; font-weight: 600; }
-    header .subtitle { font-size: 12px; color: var(--muted); }
+    .header-divider {
+      width: 1px; height: 18px;
+      background: rgba(255,255,255,0.3);
+    }
+    .header-sub {
+      font-size: 12px; color: rgba(255,255,255,0.7);
+      font-weight: 400;
+    }
 
-    .header-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
     /* Sprint tabs */
-    .sprint-tabs { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; gap: 2px; }
-    .sprint-tab {
-      padding: 5px 12px; border-radius: 6px; border: none;
-      background: transparent; color: var(--muted); cursor: pointer;
-      font-size: 13px; font-weight: 500; transition: all 0.15s;
+    .sprint-tabs {
+      display: flex;
+      background: rgba(0,0,0,0.15);
+      border-radius: 8px; padding: 3px; gap: 2px;
     }
-    .sprint-tab:hover { color: var(--text); }
-    .sprint-tab.active { background: var(--card); color: var(--text); box-shadow: 0 1px 3px #0004; }
+    .sprint-tab {
+      padding: 4px 12px; border-radius: 6px; border: none;
+      background: transparent; color: rgba(255,255,255,0.7); cursor: pointer;
+      font-size: 13px; font-weight: 500; transition: all 0.15s;
+      font-family: inherit;
+    }
+    .sprint-tab:hover { color: #fff; }
+    .sprint-tab.active {
+      background: #fff;
+      color: var(--accent);
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
 
     /* BDR toggle */
-    .bdr-toggle { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; gap: 2px; }
+    .bdr-toggle {
+      display: flex;
+      background: rgba(0,0,0,0.15);
+      border-radius: 8px; padding: 3px; gap: 2px;
+    }
     .bdr-btn {
-      padding: 5px 12px; border-radius: 6px; border: none;
-      background: transparent; color: var(--muted); cursor: pointer;
+      padding: 4px 12px; border-radius: 6px; border: none;
+      background: transparent; color: rgba(255,255,255,0.7); cursor: pointer;
       font-size: 13px; font-weight: 500; transition: all 0.15s;
+      font-family: inherit;
     }
-    .bdr-btn:hover { color: var(--text); }
-    .bdr-btn.active[data-bdr="total"] { background: var(--accent);   color: #fff; }
-    .bdr-btn.active[data-bdr="cath"]  { background: var(--cath);     color: #fff; }
-    .bdr-btn.active[data-bdr="mat"]   { background: var(--mat);      color: #fff; }
+    .bdr-btn:hover { color: #fff; }
+    .bdr-btn.active {
+      background: #fff;
+      color: var(--accent);
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
 
-    .last-updated { font-size: 11px; color: var(--muted); }
+    .last-updated { font-size: 11px; color: rgba(255,255,255,0.6); }
     .refresh-btn {
-      background: none; border: 1px solid var(--border); border-radius: 6px;
-      color: var(--muted); padding: 4px 10px; cursor: pointer; font-size: 12px;
-      transition: all 0.15s;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 6px;
+      color: #fff; padding: 4px 10px; cursor: pointer; font-size: 12px;
+      transition: all 0.15s; font-family: inherit;
     }
-    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .refresh-btn:hover { background: rgba(255,255,255,0.25); }
 
     /* ── Main layout ── */
-    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+    main { padding: 28px 32px; max-width: 1440px; margin: 0 auto; }
 
     /* ── KPI Cards ── */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 14px; margin-bottom: 24px;
+      gap: 14px; margin-bottom: 28px;
     }
     @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 700px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 500px)  { .kpi-grid { grid-template-columns: 1fr; } }
 
     .kpi-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 18px 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
     }
-    .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
-    .kpi-value { font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
-    .kpi-sub   { font-size: 12px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+    .kpi-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--border);
+    }
+    .kpi-card.accent::before { background: var(--accent); }
+    .kpi-card.green::before  { background: var(--green); }
+
+    .kpi-label {
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted);
+      margin-bottom: 10px; font-weight: 500;
+    }
+    .kpi-value {
+      font-size: 34px; font-weight: 700;
+      line-height: 1; margin-bottom: 8px;
+      color: var(--text);
+    }
+    .kpi-value.red  { color: var(--accent); }
+    .kpi-value.green { color: var(--green); }
+    .kpi-sub {
+      font-size: 12px; color: var(--muted);
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
     .kpi-sub span { display: flex; align-items: center; gap: 4px; }
-    .dot-cath { width: 7px; height: 7px; border-radius: 50%; background: var(--cath); display: inline-block; }
-    .dot-mat  { width: 7px; height: 7px; border-radius: 50%; background: var(--mat);  display: inline-block; }
-    .kpi-green  { color: var(--green); }
-    .kpi-yellow { color: var(--yellow); }
-    .kpi-red    { color: var(--red); }
+    .dot-cath { width: 6px; height: 6px; border-radius: 50%; background: var(--cath); display: inline-block; }
+    .dot-mat  { width: 6px; height: 6px; border-radius: 50%; background: var(--mat);  display: inline-block; }
 
     /* ── Section headers ── */
     .section-header {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 14px;
     }
-    .section-title { font-size: 14px; font-weight: 600; color: var(--text); }
-    .section-sub   { font-size: 12px; color: var(--muted); }
+    .section-title { font-size: 13px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; }
+    .section-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
     /* ── Campaign Table ── */
     .table-wrap {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); overflow-x: auto; margin-bottom: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow-x: auto; margin-bottom: 28px;
+      box-shadow: var(--shadow);
     }
     table { width: 100%; border-collapse: collapse; min-width: 780px; }
     thead th {
-      padding: 10px 14px; text-align: left; font-size: 11px;
+      padding: 11px 16px; text-align: left; font-size: 11px;
       text-transform: uppercase; letter-spacing: 0.06em;
       color: var(--muted); border-bottom: 1px solid var(--border);
       white-space: nowrap; background: var(--card);
+      font-weight: 600;
     }
     thead th:not(:first-child) { text-align: center; }
     tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
     tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: #ffffff06; }
-    tbody tr.totals-row { background: var(--card-alt); font-weight: 600; }
-    tbody td {
-      padding: 10px 14px; font-size: 13px; white-space: nowrap;
+    tbody tr:hover { background: #fafafa; }
+    tbody tr.totals-row {
+      background: #fafafa;
+      font-weight: 700;
+      border-top: 2px solid var(--border);
     }
+    tbody td { padding: 11px 16px; font-size: 13px; white-space: nowrap; }
     tbody td:not(:first-child) { text-align: center; }
     .campaign-name { font-weight: 500; }
+
     .badge {
-      display: inline-block; padding: 2px 8px; border-radius: 20px;
-      font-size: 11px; font-weight: 600;
+      display: inline-block; padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
     }
-    .badge-green  { background: var(--green-light); color: var(--green); }
-    .badge-yellow { background: #eab30820; color: var(--yellow); }
-    .badge-red    { background: #ef444420; color: var(--red); }
-    .badge-muted  { background: #ffffff10; color: var(--muted); }
-    .tag-cath { color: var(--cath); font-weight: 600; font-size: 12px; }
-    .tag-mat  { color: var(--mat);  font-weight: 600; font-size: 12px; }
+    .badge-green  { background: var(--green-light);  color: var(--green); }
+    .badge-yellow { background: var(--yellow-light); color: var(--yellow); }
+    .badge-red    { background: var(--accent-light); color: var(--accent); }
+    .badge-muted  { background: #f3f4f6; color: var(--muted); }
 
     /* ── Charts ── */
     .charts-grid {
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 16px; margin-bottom: 24px;
+      gap: 16px; margin-bottom: 28px;
     }
     @media (max-width: 800px) { .charts-grid { grid-template-columns: 1fr; } }
     .chart-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
     }
     .chart-card canvas { max-height: 260px; }
 
     /* ── BDR Comparison ── */
     .bdr-comparison {
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 16px; margin-bottom: 24px;
+      gap: 16px; margin-bottom: 28px;
     }
     @media (max-width: 700px) { .bdr-comparison { grid-template-columns: 1fr; } }
     .bdr-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
     }
     .bdr-card-header {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
     }
-    .bdr-name { font-size: 15px; font-weight: 700; }
+    .bdr-name { font-size: 16px; font-weight: 700; }
     .bdr-pill {
-      padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      padding: 2px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
     }
-    .bdr-pill-cath { background: #a855f722; color: var(--cath); }
-    .bdr-pill-mat  { background: #3b82f622; color: var(--mat); }
-    .bdr-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .bdr-metric { }
-    .bdr-metric-label { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
-    .bdr-metric-value { font-size: 22px; font-weight: 700; }
-    .bdr-metric-sub   { font-size: 11px; color: var(--muted); }
+    .bdr-pill-cath { background: var(--accent-light); color: var(--cath); }
+    .bdr-pill-mat  { background: #f3f4f6;             color: var(--mat);  }
+    .bdr-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .bdr-metric-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+    .bdr-metric-value { font-size: 24px; font-weight: 700; color: var(--text); }
+    .bdr-metric-value.accent { color: var(--accent); }
 
     /* ── Footer ── */
     footer {
-      text-align: center; padding: 24px;
+      text-align: center; padding: 24px 32px;
       font-size: 11px; color: var(--muted);
       border-top: 1px solid var(--border);
     }
@@ -219,7 +302,7 @@
 <div id="error-state">
   <h2>Erro ao carregar dados</h2>
   <p id="error-msg"></p>
-  <button class="refresh-btn" onclick="init()" style="margin-top:12px">Tentar novamente</button>
+  <button class="refresh-btn" onclick="init()" style="margin-top:12px;color:var(--accent);border-color:var(--accent);background:none">Tentar novamente</button>
 </div>
 
 <!-- Dashboard -->
@@ -227,9 +310,9 @@
 
   <header>
     <div class="header-left">
-      <div>
-        <h1>Outbound Dashboard</h1>
-      </div>
+      <h1>Outbound Dashboard</h1>
+      <div class="header-divider"></div>
+      <span class="header-sub">Comp · Março 2026</span>
     </div>
     <div class="header-controls">
       <div class="sprint-tabs" id="sprint-tabs">
@@ -308,23 +391,14 @@
 </div>
 
 <script>
-// ============================================================
-// CONFIG — substitua pela URL do seu Apps Script após o deploy
-// ============================================================
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSTS6aaZKM6rNe543OnBkTxE3YnE_PjMJSZVdGq1ucVhVN7AM0eCWA2l87UbiZkz8i/exec';
 const MQL_TARGET = 115;
 
-// ============================================================
-// STATE
-// ============================================================
 let _data    = null;
 let _sprint  = 'all';
 let _bdr     = 'total';
 let _charts  = {};
 
-// ============================================================
-// BOOTSTRAP
-// ============================================================
 async function init() {
   show('loading');
   try {
@@ -359,14 +433,10 @@ async function refreshData() {
     render();
     scheduleRefresh();
   } catch(e) {
-    console.warn('Refresh failed:', e.message);
     scheduleRefresh();
   }
 }
 
-// ============================================================
-// FILTERS
-// ============================================================
 document.getElementById('sprint-tabs').addEventListener('click', e => {
   const btn = e.target.closest('.sprint-tab');
   if (!btn) return;
@@ -385,12 +455,9 @@ document.querySelector('.bdr-toggle').addEventListener('click', e => {
   render();
 });
 
-// ============================================================
-// HELPERS
-// ============================================================
 function getVal(metric, bdr, sprint) {
   const b = bdr === 'total' ? 'total' : bdr;
-  const s = sprint === 'all'  ? 'all'  : sprint;
+  const s = sprint === 'all' ? 'all' : sprint;
   return (metric && metric[b] && metric[b][s] != null) ? metric[b][s] : 0;
 }
 
@@ -408,9 +475,7 @@ function getCon(campaign, bdr) {
        : campaign.contatos.mat;
 }
 
-function pct(val) {
-  return (val * 100).toFixed(1) + '%';
-}
+function pct(val) { return (val * 100).toFixed(1) + '%'; }
 
 function convClass(val) {
   if (val >= 0.2)  return 'badge-green';
@@ -424,9 +489,6 @@ function fmtDate(iso) {
   return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 }
 
-// ============================================================
-// RENDER
-// ============================================================
 function render() {
   if (!_data) return;
   renderHeader();
@@ -437,12 +499,8 @@ function render() {
 }
 
 function renderHeader() {
-  const sprints = _data.sprints || {};
-  const s = sprints[_sprint];
-  document.getElementById('last-updated').textContent =
-    'Atualizado: ' + fmtDate(_data.lastUpdated);
-  document.getElementById('footer-text').textContent =
-    'Comp Outbound Dashboard · Atualizado em ' + fmtDate(_data.lastUpdated);
+  document.getElementById('last-updated').textContent = 'Atualizado: ' + fmtDate(_data.lastUpdated);
+  document.getElementById('footer-text').textContent  = 'Comp Outbound Dashboard · Atualizado em ' + fmtDate(_data.lastUpdated);
 }
 
 function renderKPIs() {
@@ -452,8 +510,8 @@ function renderKPIs() {
   const msg = getVal(t.mensagens, _bdr, _sprint);
   const mql = getVal(t.mqls,      _bdr, _sprint);
   const convRate = emp > 0 ? mql / emp : 0;
-
   const ce = emp > 0 ? (con / emp).toFixed(2) : '—';
+  const mqlPct = Math.min(100, (mql / MQL_TARGET * 100)).toFixed(0);
 
   document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi-card">
@@ -485,9 +543,9 @@ function renderKPIs() {
         <span><span class="dot-mat"></span>${getVal(t.mensagens,'mat',_sprint)} Mat</span>
       </div>
     </div>
-    <div class="kpi-card">
+    <div class="kpi-card accent">
       <div class="kpi-label">MQLs</div>
-      <div class="kpi-value kpi-green">${mql} <span style="font-size:16px;font-weight:400;color:var(--muted)">/ ${MQL_TARGET}</span></div>
+      <div class="kpi-value red">${mql} <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${MQL_TARGET}</span></div>
       <div class="kpi-sub">
         <span><span class="dot-cath"></span>${getVal(t.mqls,'cath',_sprint)} Cath</span>
         <span><span class="dot-mat"></span>${getVal(t.mqls,'mat',_sprint)} Mat</span>
@@ -495,9 +553,7 @@ function renderKPIs() {
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Conversão (empresa)</div>
-      <div class="kpi-value ${convRate >= 0.1 ? 'kpi-green' : convRate >= 0.05 ? 'kpi-yellow' : 'kpi-red'}">
-        ${pct(convRate)}
-      </div>
+      <div class="kpi-value ${convRate >= 0.1 ? 'green' : ''}">${pct(convRate)}</div>
       <div class="kpi-sub">
         <span>${mql > 0 && msg > 0 ? (msg/mql).toFixed(1) + ' msgs/MQL' : '—'}</span>
       </div>
@@ -524,12 +580,12 @@ function renderTable() {
 
     return `
       <tr class="${isTotal ? 'totals-row' : ''}">
-        <td class="campaign-name">${isTotal ? '📊 Total' : item.name}</td>
+        <td class="campaign-name">${isTotal ? 'Total' : item.name}</td>
         <td>${emp}</td>
         <td>${con}</td>
         <td>${ce}</td>
         <td>${msg}</td>
-        <td>${mql > 0 ? `<span class="badge badge-green">${mql}</span>` : `<span style="color:var(--muted)">${mql}</span>`}</td>
+        <td>${mql > 0 ? `<span class="badge badge-red">${mql}</span>` : `<span style="color:var(--muted)">${mql}</span>`}</td>
         <td><span class="badge ${convClass(conv)}">${pct(conv)}</span></td>
         <td style="color:var(--muted)">${mpm}</td>
       </tr>`;
@@ -546,23 +602,24 @@ function renderCharts() {
   const t         = _data.totals;
   const labels    = campaigns.map(c => c.name);
 
-  // Chart 1: Msgs por campanha (Cath vs Mat)
   const msgsData = {
     labels,
     datasets: [
       {
         label: 'Cath',
         data: campaigns.map(c => getVal(c.mensagens, 'cath', _sprint)),
-        backgroundColor: '#a855f780',
-        borderColor: '#a855f7',
-        borderWidth: 1
+        backgroundColor: '#F4364C99',
+        borderColor: '#F4364C',
+        borderWidth: 1.5,
+        borderRadius: 4
       },
       {
         label: 'Mat',
         data: campaigns.map(c => getVal(c.mensagens, 'mat', _sprint)),
-        backgroundColor: '#3b82f680',
-        borderColor: '#3b82f6',
-        borderWidth: 1
+        backgroundColor: '#11111166',
+        borderColor: '#111111',
+        borderWidth: 1.5,
+        borderRadius: 4
       }
     ]
   };
@@ -571,10 +628,9 @@ function renderCharts() {
   _charts['chart-msgs'] = new Chart(document.getElementById('chart-msgs'), {
     type: 'bar',
     data: msgsData,
-    options: chartOptions('Mensagens enviadas')
+    options: chartOptions()
   });
 
-  // Chart 2: Msgs por sprint (total, Cath, Mat)
   const sprintLabels = ['S1','S2','S3','S4'];
   const sprintData = {
     labels: sprintLabels,
@@ -582,23 +638,26 @@ function renderCharts() {
       {
         label: 'Total',
         data: sprintLabels.map(s => getVal(t.mensagens, 'total', s)),
-        backgroundColor: '#64748b80',
-        borderColor: '#64748b',
-        borderWidth: 1
+        backgroundColor: '#88888833',
+        borderColor: '#888888',
+        borderWidth: 1.5,
+        borderRadius: 4
       },
       {
         label: 'Cath',
         data: sprintLabels.map(s => getVal(t.mensagens, 'cath', s)),
-        backgroundColor: '#a855f780',
-        borderColor: '#a855f7',
-        borderWidth: 1
+        backgroundColor: '#F4364C99',
+        borderColor: '#F4364C',
+        borderWidth: 1.5,
+        borderRadius: 4
       },
       {
         label: 'Mat',
         data: sprintLabels.map(s => getVal(t.mensagens, 'mat', s)),
-        backgroundColor: '#3b82f680',
-        borderColor: '#3b82f6',
-        borderWidth: 1
+        backgroundColor: '#11111166',
+        borderColor: '#111111',
+        borderWidth: 1.5,
+        borderRadius: 4
       }
     ]
   };
@@ -607,13 +666,13 @@ function renderCharts() {
   _charts['chart-sprints'] = new Chart(document.getElementById('chart-sprints'), {
     type: 'bar',
     data: sprintData,
-    options: chartOptions('Mensagens por sprint')
+    options: chartOptions()
   });
 }
 
 function renderBDRComparison() {
   const t = _data.totals;
-  function bdrCard(key, label, colorClass, pillClass) {
+  function bdrCard(key, label, nameColor, pillClass) {
     const emp  = t.empresas[key];
     const con  = t.contatos[key];
     const msg  = getVal(t.mensagens, key, _sprint);
@@ -623,7 +682,7 @@ function renderBDRComparison() {
     return `
       <div class="bdr-card">
         <div class="bdr-card-header">
-          <span class="bdr-name ${colorClass}">${label}</span>
+          <span class="bdr-name" style="color:${nameColor}">${label}</span>
           <span class="bdr-pill ${pillClass}">${key.toUpperCase()}</span>
         </div>
         <div class="bdr-metrics">
@@ -641,7 +700,7 @@ function renderBDRComparison() {
           </div>
           <div class="bdr-metric">
             <div class="bdr-metric-label">MQLs</div>
-            <div class="bdr-metric-value" style="color:var(--green)">${mql}</div>
+            <div class="bdr-metric-value accent">${mql}</div>
           </div>
           <div class="bdr-metric">
             <div class="bdr-metric-label">Conversão</div>
@@ -649,44 +708,40 @@ function renderBDRComparison() {
           </div>
           <div class="bdr-metric">
             <div class="bdr-metric-label">Msgs / MQL</div>
-            <div class="bdr-metric-value" style="font-size:18px">${mpm}</div>
+            <div class="bdr-metric-value">${mpm}</div>
           </div>
         </div>
       </div>`;
   }
 
   document.getElementById('bdr-comparison').innerHTML =
-    bdrCard('cath', 'Catharina', 'tag-cath', 'bdr-pill-cath') +
-    bdrCard('mat',  'Mateus',    'tag-mat',  'bdr-pill-mat');
+    bdrCard('cath', 'Catharina', 'var(--accent)',   'bdr-pill-cath') +
+    bdrCard('mat',  'Mateus',    'var(--mat)',       'bdr-pill-mat');
 }
 
 function destroyChart(id) {
   if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
 }
 
-function chartOptions(title) {
+function chartOptions() {
   return {
     responsive: true,
     plugins: {
-      legend: { labels: { color: '#94a3b8', font: { size: 12 } } },
-      title:  { display: false }
+      legend: { labels: { color: '#888888', font: { size: 12 } } }
     },
     scales: {
       x: {
-        ticks: { color: '#94a3b8', font: { size: 11 } },
-        grid:  { color: '#2d3f57' }
+        ticks: { color: '#888888', font: { size: 11 } },
+        grid:  { color: '#E8E8E8' }
       },
       y: {
-        ticks: { color: '#94a3b8', font: { size: 11 } },
-        grid:  { color: '#2d3f57' }
+        ticks: { color: '#888888', font: { size: 11 } },
+        grid:  { color: '#E8E8E8' }
       }
     }
   };
 }
 
-// ============================================================
-// ENTRY
-// ============================================================
 init();
 </script>
 
