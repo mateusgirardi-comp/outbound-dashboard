@@ -328,22 +328,28 @@ let _charts  = {};
 async function init() {
   show('loading');
   try {
-    const res  = await fetch(APPS_SCRIPT_URL);
+    console.log('Fetching:', APPS_SCRIPT_URL);
+    const res = await fetch(APPS_SCRIPT_URL);
+    console.log('Response status:', res.status, 'ok:', res.ok);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    _data = await res.json();
+    const text = await res.text();
+    console.log('Response preview:', text.slice(0, 200));
+    _data = JSON.parse(text);
+    console.log('Data loaded:', _data.campaigns?.length, 'campaigns');
     render();
     show('dashboard');
     scheduleRefresh();
   } catch (e) {
+    console.error('Error:', e);
     document.getElementById('error-msg').textContent = e.message;
     show('error-state');
   }
 }
 
 function show(id) {
-  ['loading','error-state','dashboard'].forEach(el => {
-    document.getElementById(el).style.display = (el === id) ? '' : 'none';
-  });
+  document.getElementById('loading').style.display     = id === 'loading'     ? 'flex'  : 'none';
+  document.getElementById('error-state').style.display = id === 'error-state' ? 'flex'  : 'none';
+  document.getElementById('dashboard').style.display   = id === 'dashboard'   ? 'block' : 'none';
 }
 
 function scheduleRefresh() {
