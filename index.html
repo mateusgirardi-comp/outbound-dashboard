@@ -97,10 +97,11 @@
     /* ── KPI Cards ── */
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 14px; margin-bottom: 24px;
     }
-    @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 500px) { .kpi-grid { grid-template-columns: 1fr; } }
 
     .kpi-card {
@@ -468,12 +469,17 @@ function renderKPIs() {
       </div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Contatos / Empresa</div>
+      <div class="kpi-label">Contatos</div>
       <div class="kpi-value">${con}</div>
       <div class="kpi-sub">
         <span><span class="dot-cath"></span>${t.contatos.cath} Cath</span>
         <span><span class="dot-mat"></span>${t.contatos.mat} Mat</span>
       </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Contatos / Empresa</div>
+      <div class="kpi-value">${ce}</div>
+      <div class="kpi-sub"><span>por empresa única</span></div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Mensagens Enviadas</div>
