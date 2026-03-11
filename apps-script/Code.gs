@@ -185,7 +185,8 @@ function processCampaignSheet(sheet) {
   var empresas = {
     total: Object.keys(allEmpresas).length,
     cath:  Object.keys(empresasCath).length,
-    mat:   Object.keys(empresasMat).length
+    mat:   Object.keys(empresasMat).length,
+    list:  Object.keys(allEmpresas).sort()
   };
 
   var mqlCount          = mqls.total.all;
@@ -245,7 +246,8 @@ function calculateTotals(campaigns) {
   var empresas = {
     total: Object.keys(globalAll).length,
     cath:  Object.keys(globalCath).length,
-    mat:   Object.keys(globalMat).length
+    mat:   Object.keys(globalMat).length,
+    list:  Object.keys(globalAll).sort()
   };
 
   var mqlCount          = mqls.total.all;

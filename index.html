@@ -460,7 +460,7 @@ function renderKPIs() {
 
   document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi-card">
-      <div class="kpi-label">Empresas</div>
+      <div class="kpi-label">Empresas Únicas</div>
       <div class="kpi-value">${emp}</div>
       <div class="kpi-sub">
         <span><span class="dot-cath"></span>${t.empresas.cath} Cath</span>
@@ -468,9 +468,12 @@ function renderKPIs() {
       </div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Contatos</div>
+      <div class="kpi-label">Contatos / Empresa</div>
       <div class="kpi-value">${con}</div>
-      <div class="kpi-sub"><span>C/E: ${ce}</span></div>
+      <div class="kpi-sub">
+        <span><span class="dot-cath"></span>${t.contatos.cath} Cath</span>
+        <span><span class="dot-mat"></span>${t.contatos.mat} Mat</span>
+      </div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Mensagens Enviadas</div>
