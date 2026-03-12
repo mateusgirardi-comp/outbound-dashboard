@@ -608,6 +608,35 @@ document.querySelector('.bdr-toggle').addEventListener('click', e => {
   render();
 });
 
+function getFilteredCampaigns() {
+  if (!_data) return [];
+  const campaigns = _data.campaigns || [];
+  if (_month === 'all') return campaigns;
+  return campaigns.filter(c => c.monthId === _month);
+}
+
+function getFilteredStats() {
+  if (!_data) return _data ? _data.totals : null;
+  const t = _data.totals;
+  if (_month === 'all') return t;
+  const filtered = getFilteredCampaigns();
+  // Dedup empresas across filtered campaigns using the list
+  const allEmps = {};
+  filtered.forEach(c => (c.empresas.list || []).forEach(e => allEmps[e] = true));
+  const conTotal = filtered.reduce((s, c) => s + c.contatos.total, 0);
+  const conCath  = filtered.reduce((s, c) => s + c.contatos.cath,  0);
+  const conMat   = filtered.reduce((s, c) => s + c.contatos.mat,   0);
+  const empCath  = filtered.reduce((s, c) => s + c.empresas.cath,  0);
+  const empMat   = filtered.reduce((s, c) => s + c.empresas.mat,   0);
+  return {
+    empresas:  { total: Object.keys(allEmps).length, cath: empCath, mat: empMat, list: Object.keys(allEmps) },
+    contatos:  { total: conTotal, cath: conCath, mat: conMat },
+    mensagens: t.mensagens,
+    mqls:      t.mqls,
+    conversion: t.conversion
+  };
+}
+
 function getVal(metric, bdr, month, sprint) {
   const b = bdr === 'total' ? 'total' : bdr;
   if (!metric || !metric[b]) return 0;
@@ -665,7 +694,7 @@ function renderHeader() {
 }
 
 function renderKPIs() {
-  const t   = _data.totals;
+  const t   = getFilteredStats();
   const emp = getEmp({ empresas: t.empresas }, _bdr);
   const con = getCon({ contatos: t.contatos }, _bdr);
   const msg = getVal(t.mensagens, _bdr, _month, _sprint);
@@ -721,8 +750,8 @@ function renderKPIs() {
 }
 
 function renderTable() {
-  const campaigns = _data.campaigns || [];
-  const t         = _data.totals;
+  const campaigns = getFilteredCampaigns();
+  const t         = getFilteredStats();
 
   const sprintLabel = _sprint === 'all' ? 'Total' : _sprint;
   document.getElementById('table-subtitle').textContent =
@@ -952,7 +981,7 @@ function chartOptions(large = false) {
 // ============================================================
 function openModal(kpi) {
   if (!_data) return;
-  const t   = _data.totals;
+  const t   = getFilteredStats();
   const emp = getEmp({ empresas: t.empresas }, _bdr);
   const con = getCon({ contatos: t.contatos }, _bdr);
   const msg = getVal(t.mensagens, _bdr, _month, _sprint);
@@ -965,12 +994,12 @@ function openModal(kpi) {
       label: 'Empresas Únicas',
       value: emp,
       desc: 'Número de empresas distintas sendo prospectadas. Se a mesma empresa aparece em duas campanhas diferentes, ela é contada apenas uma vez — garantindo que o número reflita o alcance real do outbound, sem inflar o total.',
-      formula: `Pegamos a lista de empresas de cada campanha e juntamos tudo em uma lista única, removendo repetições. Por exemplo: se "Nubank" aparece na Campanha A e na Campanha B, ela entra só 1 vez no total. A soma bruta seria ${(_data.campaigns||[]).reduce((s,c)=>s+c.empresas.total,0)} empresas — mas após remover as que aparecem em mais de uma campanha, chegamos em ${t.empresas.total}.`,
+      formula: `Pegamos a lista de empresas de cada campanha e juntamos tudo em uma lista única, removendo repetições. Por exemplo: se "Nubank" aparece na Campanha A e na Campanha B, ela entra só 1 vez no total. A soma bruta seria ${getFilteredCampaigns().reduce((s,c)=>s+c.empresas.total,0)} empresas — mas após remover as que aparecem em mais de uma campanha, chegamos em ${t.empresas.total}.`,
       breakdown: [
         { label: 'Cath',  value: t.empresas.cath },
         { label: 'Mat',   value: t.empresas.mat  },
-        { label: 'Campanhas ativas', value: (_data.campaigns || []).length },
-        { label: 'Duplicatas removidas', value: (_data.campaigns||[]).reduce((s,c)=>s+c.empresas.total,0) - t.empresas.total }
+        { label: 'Campanhas ativas', value: getFilteredCampaigns().length },
+        { label: 'Duplicatas removidas', value: getFilteredCampaigns().reduce((s,c)=>s+c.empresas.total,0) - t.empresas.total }
       ]
     },
     contatos: {

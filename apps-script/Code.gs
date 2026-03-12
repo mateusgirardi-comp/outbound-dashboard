@@ -81,7 +81,7 @@ function getData() {
       }
 
       var result = processCampaignSheet(sheet);
-      if (result) campaigns.push(result);
+      if (result) { result.monthId = monthCfg.id; campaigns.push(result); }
     }
   }
 
