@@ -695,6 +695,16 @@ function renderHeader() {
     ? 'Comp · Todos os meses'
     : 'Comp · ' + (months[_month] ? months[_month].label : _month) + ' 2026';
   document.getElementById('header-sub').textContent = sub;
+
+  // Update sprint tab labels with date ranges for selected month
+  const sprintNames = ['S1','S2','S3','S4'];
+  document.querySelectorAll('#sprint-tabs .sprint-tab[data-sprint]').forEach(btn => {
+    const s = btn.dataset.sprint;
+    if (s === 'all') { btn.textContent = 'Consolidado'; return; }
+    const sprintMeta = months[_month] && months[_month].sprints && months[_month].sprints[s];
+    btn.textContent = sprintMeta ? sprintMeta.label : s;
+    btn.title = s;
+  });
 }
 
 function renderKPIs() {
@@ -790,7 +800,7 @@ function renderTable() {
 }
 
 function buildMsgsData() {
-  const campaigns = _data.campaigns || [];
+  const campaigns = getFilteredCampaigns();
   const labels = campaigns.map(c => c.name);
   return {
     labels,
@@ -824,34 +834,43 @@ function buildMsgsData() {
 }
 
 function buildSprintsData() {
-  const t = _data.totals;
-  const sprintLabels = ['S1','S2','S3','S4'];
+  const t = getFilteredStats();
+  const months = _data.months || {};
+  const sprintNames = ['S1','S2','S3','S4'];
+
+  let keys, labels;
+  if (_month === 'all') {
+    // Show all sprints from all months: Fev S1…S4, Mar S1…S4
+    keys = []; labels = [];
+    Object.keys(months).forEach(mId => {
+      sprintNames.forEach(s => {
+        keys.push({ month: mId, sprint: s });
+        labels.push((months[mId].label || mId).slice(0, 3) + ' ' + s);
+      });
+    });
+  } else {
+    keys   = sprintNames.map(s => ({ month: _month, sprint: s }));
+    labels = sprintNames.map(s => (months[_month] && months[_month].sprints[s])
+      ? months[_month].sprints[s].label : s);
+  }
+
   return {
-    labels: sprintLabels,
+    labels,
     datasets: [
       {
         label: 'Total',
-        data: sprintLabels.map(s => getVal(t.mensagens, 'total', _month === 'all' ? 'MAR' : _month, s)),
-        backgroundColor: '#88888833',
-        borderColor: '#888888',
-        borderWidth: 1.5,
-        borderRadius: 4
+        data: keys.map(k => getVal(t.mensagens, 'total', k.month, k.sprint)),
+        backgroundColor: '#88888833', borderColor: '#888888', borderWidth: 1.5, borderRadius: 4
       },
       {
         label: 'Cath',
-        data: sprintLabels.map(s => getVal(t.mensagens, 'cath', _month === 'all' ? 'MAR' : _month, s)),
-        backgroundColor: '#F4364C99',
-        borderColor: '#F4364C',
-        borderWidth: 1.5,
-        borderRadius: 4
+        data: keys.map(k => getVal(t.mensagens, 'cath', k.month, k.sprint)),
+        backgroundColor: '#F4364C99', borderColor: '#F4364C', borderWidth: 1.5, borderRadius: 4
       },
       {
         label: 'Mat',
-        data: sprintLabels.map(s => getVal(t.mensagens, 'mat', _month === 'all' ? 'MAR' : _month, s)),
-        backgroundColor: '#11111166',
-        borderColor: '#111111',
-        borderWidth: 1.5,
-        borderRadius: 4
+        data: keys.map(k => getVal(t.mensagens, 'mat', k.month, k.sprint)),
+        backgroundColor: '#11111166', borderColor: '#111111', borderWidth: 1.5, borderRadius: 4
       }
     ]
   };
