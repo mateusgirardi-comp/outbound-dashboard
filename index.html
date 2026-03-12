@@ -892,8 +892,8 @@ function openModal(kpi) {
     msgs: {
       label: 'Mensagens Enviadas',
       value: msg,
-      desc: 'Total de touchpoints enviados na cadência. Cada coluna "Data Envio" preenchida numa linha conta como 1 mensagem. Um único lead pode gerar múltiplas mensagens (ex: follow-up 1, follow-up 2, LinkedIn, etc.).',
-      formula: 'SUM(colunas "Data Envio" preenchidas)',
+      desc: 'Total de mensagens enviadas na cadência de prospecção. Um contato pode receber várias mensagens ao longo do tempo — por exemplo, um primeiro contato, um follow-up e uma mensagem no LinkedIn são 3 mensagens para o mesmo contato.',
+      formula: `Na planilha, cada coluna chamada "Data Envio" representa um touchpoint da cadência. Para cada contato, contamos quantas dessas colunas têm uma data preenchida — esse é o número de mensagens enviadas para aquele contato. Somamos tudo para chegar em ${msg} mensagens no total.`,
       breakdown: [
         { label: 'Cath',  value: getVal(t.mensagens,'cath',_sprint) },
         { label: 'Mat',   value: getVal(t.mensagens,'mat',_sprint)  },
