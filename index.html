@@ -247,7 +247,7 @@
       padding: 22px;
       box-shadow: var(--shadow);
     }
-    .chart-card canvas { max-height: 260px; }
+    .chart-card canvas { display: block; }
 
     /* ── BDR Comparison ── */
     .bdr-comparison {
@@ -422,10 +422,12 @@
 
 <!-- Chart Modal -->
 <div class="modal-overlay" id="chart-modal" onclick="closeChartModal(event)">
-  <div class="modal-box" style="max-width:860px;width:100%;padding:28px 32px;">
+  <div class="modal-box" style="max-width:900px;width:100%;padding:28px 32px;">
     <button class="modal-close" onclick="closeChartModalDirect()">✕</button>
     <div class="modal-kpi-label" id="chart-modal-title" style="margin-bottom:20px;font-size:13px"></div>
-    <canvas id="chart-modal-canvas"></canvas>
+    <div style="position:relative;height:420px;">
+      <canvas id="chart-modal-canvas"></canvas>
+    </div>
   </div>
 </div>
 
@@ -492,14 +494,18 @@
           <div class="section-title">Mensagens por Campanha</div>
           <span class="chart-expand-hint">⤢ ampliar</span>
         </div>
-        <canvas id="chart-msgs"></canvas>
+        <div style="position:relative;height:240px;">
+          <canvas id="chart-msgs"></canvas>
+        </div>
       </div>
       <div class="chart-card chart-clickable" onclick="openChartModal('sprints')">
         <div class="section-header">
           <div class="section-title">Mensagens por Sprint</div>
           <span class="chart-expand-hint">⤢ ampliar</span>
         </div>
-        <canvas id="chart-sprints"></canvas>
+        <div style="position:relative;height:240px;">
+          <canvas id="chart-sprints"></canvas>
+        </div>
       </div>
     </div>
 
@@ -896,17 +902,17 @@ function destroyChart(id) {
 function chartOptions(large = false) {
   return {
     responsive: true,
-    maintainAspectRatio: !large,
+    maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: '#888888', font: { size: large ? 13 : 12 } } }
+      legend: { labels: { color: '#888888', font: { size: 12 } } }
     },
     scales: {
       x: {
-        ticks: { color: '#888888', font: { size: large ? 12 : 11 }, maxRotation: large ? 30 : 45 },
+        ticks: { color: '#888888', font: { size: 11 }, maxRotation: 45 },
         grid:  { color: '#E8E8E8' }
       },
       y: {
-        ticks: { color: '#888888', font: { size: large ? 12 : 11 } },
+        ticks: { color: '#888888', font: { size: 11 } },
         grid:  { color: '#E8E8E8' }
       }
     }
