@@ -527,7 +527,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSTS6aaZKM6rNe543OnBkTxE3YnE_PjMJSZVdGq1ucVhVN7AM0eCWA2l87UbiZkz8i/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyIvn9pe6goFv8yA6Zbb-wBWoEzY3Bc2fiyVxoWlGWfN9U8721Xx_g6fSZXqeetFie6/exec';
 const MQL_TARGET = 115;
 
 let _data    = null;
@@ -668,8 +668,8 @@ function renderKPIs() {
   const t   = _data.totals;
   const emp = getEmp({ empresas: t.empresas }, _bdr);
   const con = getCon({ contatos: t.contatos }, _bdr);
-  const msg = getVal(t.mensagens, _bdr, _sprint);
-  const mql = getVal(t.mqls,      _bdr, _sprint);
+  const msg = getVal(t.mensagens, _bdr, _month, _sprint);
+  const mql = getVal(t.mqls,      _bdr, _month, _sprint);
   const convRate = emp > 0 ? mql / emp : 0;
   const ce = emp > 0 ? (con / emp).toFixed(2) : '—';
   document.getElementById('kpi-grid').innerHTML = `
@@ -955,8 +955,8 @@ function openModal(kpi) {
   const t   = _data.totals;
   const emp = getEmp({ empresas: t.empresas }, _bdr);
   const con = getCon({ contatos: t.contatos }, _bdr);
-  const msg = getVal(t.mensagens, _bdr, _sprint);
-  const mql = getVal(t.mqls,      _bdr, _sprint);
+  const msg = getVal(t.mensagens, _bdr, _month, _sprint);
+  const mql = getVal(t.mqls,      _bdr, _month, _sprint);
   const ce  = emp > 0 ? (con / emp).toFixed(2) : '—';
   const convRate = emp > 0 ? mql / emp : 0;
 

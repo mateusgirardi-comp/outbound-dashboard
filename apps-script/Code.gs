@@ -15,22 +15,22 @@ var MONTHS_CONFIG = [
       'Webinar Open Demo 2025'
     ],
     sprints: [
-      { name: 'S1', start: new Date('2026-02-01'), end: new Date('2026-02-07') },
-      { name: 'S2', start: new Date('2026-02-08'), end: new Date('2026-02-14') },
-      { name: 'S3', start: new Date('2026-02-15'), end: new Date('2026-02-21') },
-      { name: 'S4', start: new Date('2026-02-22'), end: new Date('2026-02-28') }
+      { name: 'S1', label: '01/02 – 07/02', start: new Date('2026-02-01'), end: new Date('2026-02-07') },
+      { name: 'S2', label: '08/02 – 14/02', start: new Date('2026-02-08'), end: new Date('2026-02-14') },
+      { name: 'S3', label: '15/02 – 21/02', start: new Date('2026-02-15'), end: new Date('2026-02-21') },
+      { name: 'S4', label: '22/02 – 28/02', start: new Date('2026-02-22'), end: new Date('2026-02-28') }
     ]
   },
   {
     id: 'MAR',
     label: 'Março',
     spreadsheetId: '1evy8peuLyilrhTndKHMbUgqDpWl55p8pCARax24TxGA',
-    allowedSheets: null, // auto-detecta todas as abas de campanha
+    allowedSheets: null,
     sprints: [
-      { name: 'S1', start: new Date('2026-03-01'), end: new Date('2026-03-08') },
-      { name: 'S2', start: new Date('2026-03-09'), end: new Date('2026-03-16') },
-      { name: 'S3', start: new Date('2026-03-17'), end: new Date('2026-03-24') },
-      { name: 'S4', start: new Date('2026-03-25'), end: new Date('2026-04-01') }
+      { name: 'S1', label: '01/03 – 08/03', start: new Date('2026-03-01'), end: new Date('2026-03-08') },
+      { name: 'S2', label: '09/03 – 16/03', start: new Date('2026-03-09'), end: new Date('2026-03-16') },
+      { name: 'S3', label: '17/03 – 24/03', start: new Date('2026-03-17'), end: new Date('2026-03-24') },
+      { name: 'S4', label: '25/03 – 01/04', start: new Date('2026-03-25'), end: new Date('2026-04-01') }
     ]
   }
 ];
@@ -93,12 +93,10 @@ function getData() {
   MONTHS_CONFIG.forEach(function(monthCfg) {
     monthsMeta[monthCfg.id] = { label: monthCfg.label, sprints: {} };
     monthCfg.sprints.forEach(function(s) {
-      var startStr = Utilities.formatDate(s.start, 'America/Sao_Paulo', 'dd/MM');
-      var endStr   = Utilities.formatDate(s.end,   'America/Sao_Paulo', 'dd/MM');
       monthsMeta[monthCfg.id].sprints[s.name] = {
         start: s.start.toISOString().slice(0, 10),
         end:   s.end.toISOString().slice(0, 10),
-        label: startStr + ' – ' + endStr
+        label: s.label
       };
     });
   });
