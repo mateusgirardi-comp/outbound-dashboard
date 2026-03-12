@@ -170,8 +170,19 @@ function emptyBDRMetric() {
 function addCount(obj, bdrKey, monthSprint, fallbackMonth) {
   obj.total.all++;
   obj[bdrKey].all++;
-  var m = monthSprint ? monthSprint.month : fallbackMonth;
-  var s = monthSprint ? monthSprint.sprint : null;
+  // If date falls in a different month than the campaign's month,
+  // count in campaign's month without a specific sprint (overflow)
+  var m, s;
+  if (monthSprint && fallbackMonth && monthSprint.month !== fallbackMonth) {
+    m = fallbackMonth;
+    s = null;
+  } else if (monthSprint) {
+    m = monthSprint.month;
+    s = monthSprint.sprint;
+  } else {
+    m = fallbackMonth;
+    s = null;
+  }
   if (m && obj.total[m] !== undefined) {
     obj.total[m].all++;
     if (s && obj.total[m][s] !== undefined) obj.total[m][s]++;
