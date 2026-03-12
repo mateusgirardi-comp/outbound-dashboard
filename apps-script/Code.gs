@@ -80,7 +80,7 @@ function getData() {
         if (monthCfg.allowedSheets.indexOf(sheetName) === -1) continue;
       }
 
-      var result = processCampaignSheet(sheet);
+      var result = processCampaignSheet(sheet, monthCfg.id);
       if (result) { result.monthId = monthCfg.id; campaigns.push(result); }
     }
   }
@@ -167,18 +167,16 @@ function emptyBDRMetric() {
   return { total: emptyMonthSprints(), cath: emptyMonthSprints(), mat: emptyMonthSprints() };
 }
 
-function addCount(obj, bdrKey, monthSprint) {
+function addCount(obj, bdrKey, monthSprint, fallbackMonth) {
   obj.total.all++;
   obj[bdrKey].all++;
-  if (monthSprint) {
-    var m = monthSprint.month;
-    var s = monthSprint.sprint;
-    if (obj.total[m] !== undefined) {
-      obj.total[m].all++;
-      if (s && obj.total[m][s] !== undefined) obj.total[m][s]++;
-      obj[bdrKey][m].all++;
-      if (s && obj[bdrKey][m][s] !== undefined) obj[bdrKey][m][s]++;
-    }
+  var m = monthSprint ? monthSprint.month : fallbackMonth;
+  var s = monthSprint ? monthSprint.sprint : null;
+  if (m && obj.total[m] !== undefined) {
+    obj.total[m].all++;
+    if (s && obj.total[m][s] !== undefined) obj.total[m][s]++;
+    obj[bdrKey][m].all++;
+    if (s && obj[bdrKey][m][s] !== undefined) obj[bdrKey][m][s]++;
   }
 }
 
@@ -186,7 +184,7 @@ function addCount(obj, bdrKey, monthSprint) {
 // PROCESSAMENTO POR ABA
 // ============================================================
 
-function processCampaignSheet(sheet) {
+function processCampaignSheet(sheet, monthId) {
   var name = sheet.getName();
   var allValues = sheet.getDataRange().getValues();
   if (allValues.length < 3) return null;
@@ -234,7 +232,7 @@ function processCampaignSheet(sheet) {
       if (!dateVal) continue;
       var date = (dateVal instanceof Date) ? dateVal : new Date(dateVal);
       if (isNaN(date.getTime())) continue;
-      addCount(mensagens, bdrKey, getMonthSprint(date));
+      addCount(mensagens, bdrKey, getMonthSprint(date), monthId);
     }
 
     if (statusGeral.toUpperCase() === 'MQL') {
@@ -243,7 +241,7 @@ function processCampaignSheet(sheet) {
         var dv = row[dataEnvioIdxs[q]];
         if (dv) { mqlDate = (dv instanceof Date) ? dv : new Date(dv); break; }
       }
-      addCount(mqls, bdrKey, mqlDate ? getMonthSprint(mqlDate) : null);
+      addCount(mqls, bdrKey, mqlDate ? getMonthSprint(mqlDate) : null, monthId);
     }
   }
 
