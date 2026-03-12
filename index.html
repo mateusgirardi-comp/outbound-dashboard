@@ -287,6 +287,21 @@
       border-top: 1px solid var(--border);
     }
 
+    .chart-clickable {
+      cursor: pointer;
+      transition: box-shadow 0.15s, transform 0.15s;
+    }
+    .chart-clickable:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+    .chart-expand-hint {
+      font-size: 11px; color: var(--muted);
+      font-weight: 400; letter-spacing: 0;
+      text-transform: none;
+    }
+    .chart-expand-hint:hover { color: var(--accent); }
+
     #dashboard { display: none; }
 
     /* ── KPI clickable ── */
@@ -405,6 +420,15 @@
   </div>
 </div>
 
+<!-- Chart Modal -->
+<div class="modal-overlay" id="chart-modal" onclick="closeChartModal(event)">
+  <div class="modal-box" style="max-width:860px;width:100%;padding:28px 32px;">
+    <button class="modal-close" onclick="closeChartModalDirect()">✕</button>
+    <div class="modal-kpi-label" id="chart-modal-title" style="margin-bottom:20px;font-size:13px"></div>
+    <canvas id="chart-modal-canvas"></canvas>
+  </div>
+</div>
+
 <!-- Dashboard -->
 <div id="dashboard">
 
@@ -463,15 +487,17 @@
 
     <!-- Charts -->
     <div class="charts-grid">
-      <div class="chart-card">
+      <div class="chart-card chart-clickable" onclick="openChartModal('msgs')">
         <div class="section-header">
           <div class="section-title">Mensagens por Campanha</div>
+          <span class="chart-expand-hint">⤢ ampliar</span>
         </div>
         <canvas id="chart-msgs"></canvas>
       </div>
-      <div class="chart-card">
+      <div class="chart-card chart-clickable" onclick="openChartModal('sprints')">
         <div class="section-header">
           <div class="section-title">Mensagens por Sprint</div>
+          <span class="chart-expand-hint">⤢ ampliar</span>
         </div>
         <canvas id="chart-sprints"></canvas>
       </div>
@@ -696,14 +722,20 @@ function renderTable() {
   document.getElementById('campaign-tbody').innerHTML = rows + totalsRow;
 }
 
-function renderCharts() {
+function buildMsgsData() {
   const campaigns = _data.campaigns || [];
-  const t         = _data.totals;
-  const labels    = campaigns.map(c => c.name);
-
-  const msgsData = {
+  const labels = campaigns.map(c => c.name);
+  return {
     labels,
     datasets: [
+      {
+        label: 'Total',
+        data: campaigns.map(c => getVal(c.mensagens, 'total', _sprint)),
+        backgroundColor: '#88888833',
+        borderColor: '#888888',
+        borderWidth: 1.5,
+        borderRadius: 4
+      },
       {
         label: 'Cath',
         data: campaigns.map(c => getVal(c.mensagens, 'cath', _sprint)),
@@ -722,16 +754,12 @@ function renderCharts() {
       }
     ]
   };
+}
 
-  destroyChart('chart-msgs');
-  _charts['chart-msgs'] = new Chart(document.getElementById('chart-msgs'), {
-    type: 'bar',
-    data: msgsData,
-    options: chartOptions()
-  });
-
+function buildSprintsData() {
+  const t = _data.totals;
   const sprintLabels = ['S1','S2','S3','S4'];
-  const sprintData = {
+  return {
     labels: sprintLabels,
     datasets: [
       {
@@ -760,13 +788,56 @@ function renderCharts() {
       }
     ]
   };
+}
+
+function renderCharts() {
+  destroyChart('chart-msgs');
+  _charts['chart-msgs'] = new Chart(document.getElementById('chart-msgs'), {
+    type: 'bar', data: buildMsgsData(), options: chartOptions()
+  });
 
   destroyChart('chart-sprints');
   _charts['chart-sprints'] = new Chart(document.getElementById('chart-sprints'), {
-    type: 'bar',
-    data: sprintData,
-    options: chartOptions()
+    type: 'bar', data: buildSprintsData(), options: chartOptions()
   });
+}
+
+// ── Chart Modal ──
+let _chartModalInstance = null;
+
+function openChartModal(id) {
+  const titles = { msgs: 'Mensagens por Campanha', sprints: 'Mensagens por Sprint' };
+  const data   = id === 'msgs' ? buildMsgsData() : buildSprintsData();
+
+  document.getElementById('chart-modal-title').textContent = titles[id] || '';
+  document.getElementById('chart-modal').classList.add('open');
+
+  if (_chartModalInstance) { _chartModalInstance.destroy(); _chartModalInstance = null; }
+
+  // small delay so canvas is visible before rendering
+  setTimeout(() => {
+    _chartModalInstance = new Chart(document.getElementById('chart-modal-canvas'), {
+      type: 'bar',
+      data,
+      options: chartOptions(true)
+    });
+  }, 30);
+
+  document.addEventListener('keydown', onChartModalEsc);
+}
+
+function closeChartModalDirect() {
+  document.getElementById('chart-modal').classList.remove('open');
+  if (_chartModalInstance) { _chartModalInstance.destroy(); _chartModalInstance = null; }
+  document.removeEventListener('keydown', onChartModalEsc);
+}
+
+function closeChartModal(e) {
+  if (e.target === document.getElementById('chart-modal')) closeChartModalDirect();
+}
+
+function onChartModalEsc(e) {
+  if (e.key === 'Escape') closeChartModalDirect();
 }
 
 function renderBDRComparison() {
@@ -822,19 +893,20 @@ function destroyChart(id) {
   if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
 }
 
-function chartOptions() {
+function chartOptions(large = false) {
   return {
     responsive: true,
+    maintainAspectRatio: !large,
     plugins: {
-      legend: { labels: { color: '#888888', font: { size: 12 } } }
+      legend: { labels: { color: '#888888', font: { size: large ? 13 : 12 } } }
     },
     scales: {
       x: {
-        ticks: { color: '#888888', font: { size: 11 } },
+        ticks: { color: '#888888', font: { size: large ? 12 : 11 }, maxRotation: large ? 30 : 45 },
         grid:  { color: '#E8E8E8' }
       },
       y: {
-        ticks: { color: '#888888', font: { size: 11 } },
+        ticks: { color: '#888888', font: { size: large ? 12 : 11 } },
         grid:  { color: '#E8E8E8' }
       }
     }
