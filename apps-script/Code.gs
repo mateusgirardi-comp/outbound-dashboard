@@ -2,18 +2,42 @@
 // CONFIGURAÇÃO — atualizar no início de cada mês
 // ============================================================
 
-var SPRINT_CONFIG = [
-  { name: 'S1', start: new Date('2026-03-01'), end: new Date('2026-03-08') },
-  { name: 'S2', start: new Date('2026-03-09'), end: new Date('2026-03-16') },
-  { name: 'S3', start: new Date('2026-03-17'), end: new Date('2026-03-24') },
-  { name: 'S4', start: new Date('2026-03-25'), end: new Date('2026-04-01') }
+var MONTHS_CONFIG = [
+  {
+    id: 'FEB',
+    label: 'Fevereiro',
+    spreadsheetId: '11ygMu2JIO7XCeu3a0tAlNAfvH_Z8egHA_3kNwnYYB2A',
+    allowedSheets: [
+      'State of Comp in Tech',
+      'Webinar Janeiro',
+      'Engaged Comp LKD',
+      'Maturidade em Remuneracao',
+      'Webinar Open Demo 2025'
+    ],
+    sprints: [
+      { name: 'S1', start: new Date('2026-02-01'), end: new Date('2026-02-07') },
+      { name: 'S2', start: new Date('2026-02-08'), end: new Date('2026-02-14') },
+      { name: 'S3', start: new Date('2026-02-15'), end: new Date('2026-02-21') },
+      { name: 'S4', start: new Date('2026-02-22'), end: new Date('2026-02-28') }
+    ]
+  },
+  {
+    id: 'MAR',
+    label: 'Março',
+    spreadsheetId: '1evy8peuLyilrhTndKHMbUgqDpWl55p8pCARax24TxGA',
+    allowedSheets: null, // auto-detecta todas as abas de campanha
+    sprints: [
+      { name: 'S1', start: new Date('2026-03-01'), end: new Date('2026-03-08') },
+      { name: 'S2', start: new Date('2026-03-09'), end: new Date('2026-03-16') },
+      { name: 'S3', start: new Date('2026-03-17'), end: new Date('2026-03-24') },
+      { name: 'S4', start: new Date('2026-03-25'), end: new Date('2026-04-01') }
+    ]
+  }
 ];
 
-var SPREADSHEET_ID = '1evy8peuLyilrhTndKHMbUgqDpWl55p8pCARax24TxGA';
-
-// Abas que NÃO são campanhas (ignoradas)
+// Abas que NÃO são campanhas (usadas apenas para Mar / auto-detect)
 var IGNORED_SHEETS = [
-  'Métricas', 'CADENCIA', 'MENSAGEM', 'mat_analise>',
+  'Métricas', 'CADENCIA', 'CADENCIAS', 'MENSAGEM', 'mat_analise>',
   'EngagementSample', 'CompaniesEngagement', 'table_import',
   'de-para', 'sales_pipe', 'clean_formula',
   'Companies CRM 20d9777bf857815ba546f7768e4ca2cc', 'View',
@@ -36,89 +60,75 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function getDebugMqls() {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheets = ss.getSheets();
-  var rows = [];
-
-  for (var i = 0; i < sheets.length; i++) {
-    var sheet = sheets[i];
-    var name = sheet.getName();
-    var allValues = sheet.getDataRange().getValues();
-    if (allValues.length < 3) continue;
-
-    var headers = allValues[1].map(function(h) { return String(h).trim(); });
-    if (!isCampaignSheet(name, headers)) continue;
-
-    var nomeIdx    = findColIdx(headers, COL_ALIASES.nome);
-    var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
-    var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
-    var statusIdx  = findColIdx(headers, COL_ALIASES.status);
-
-    for (var r = 2; r < allValues.length; r++) {
-      var row = allValues[r];
-      var statusRaw = statusIdx >= 0 ? row[statusIdx] : '';
-      var statusStr = String(statusRaw).trim();
-      if (statusStr.toUpperCase() === 'MQL') {
-        var nome = String(row[nomeIdx] || '').trim();
-        var empresa = String(row[empresaIdx] || '').trim();
-        rows.push({
-          campaign: name,
-          nome: nome,
-          empresa: empresa,
-          bdr: String(row[bdrIdx] || '').trim(),
-          statusRaw: statusStr,
-          skipped: (!nome || !empresa)
-        });
-      }
-    }
-  }
-
-  return { count: rows.length, mqls: rows };
-}
-
 // ============================================================
 // COLETA E PROCESSAMENTO
 // ============================================================
 
 function getData() {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheets = ss.getSheets();
   var campaigns = [];
 
-  for (var i = 0; i < sheets.length; i++) {
-    var result = processCampaignSheet(sheets[i]);
-    if (result) campaigns.push(result);
+  for (var m = 0; m < MONTHS_CONFIG.length; m++) {
+    var monthCfg = MONTHS_CONFIG[m];
+    var ss = SpreadsheetApp.openById(monthCfg.spreadsheetId);
+    var sheets = ss.getSheets();
+
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var sheetName = sheet.getName();
+
+      if (monthCfg.allowedSheets !== null) {
+        if (monthCfg.allowedSheets.indexOf(sheetName) === -1) continue;
+      }
+
+      var result = processCampaignSheet(sheet);
+      if (result) campaigns.push(result);
+    }
   }
 
   var totals = calculateTotals(campaigns);
-
-  // Remove listas internas antes de retornar
   campaigns.forEach(function(c) { delete c._empresasCath; delete c._empresasMat; });
+
+  // Metadata de meses para o frontend
+  var monthsMeta = {};
+  MONTHS_CONFIG.forEach(function(monthCfg) {
+    monthsMeta[monthCfg.id] = { label: monthCfg.label, sprints: {} };
+    monthCfg.sprints.forEach(function(s) {
+      var startStr = Utilities.formatDate(s.start, 'America/Sao_Paulo', 'dd/MM');
+      var endStr   = Utilities.formatDate(s.end,   'America/Sao_Paulo', 'dd/MM');
+      monthsMeta[monthCfg.id].sprints[s.name] = {
+        start: s.start.toISOString().slice(0, 10),
+        end:   s.end.toISOString().slice(0, 10),
+        label: startStr + ' – ' + endStr
+      };
+    });
+  });
 
   return {
     lastUpdated: new Date().toISOString(),
-    sprints: {
-      S1: { start: '2026-03-01', end: '2026-03-08', label: '01/03 – 08/03' },
-      S2: { start: '2026-03-09', end: '2026-03-16', label: '09/03 – 16/03' },
-      S3: { start: '2026-03-17', end: '2026-03-24', label: '17/03 – 24/03' },
-      S4: { start: '2026-03-25', end: '2026-04-01', label: '25/03 – 01/04' }
-    },
+    months: monthsMeta,
     totals: totals,
     campaigns: campaigns
   };
 }
 
-function getSprint(date) {
+function getMonthSprint(date) {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) return null;
-  for (var i = 0; i < SPRINT_CONFIG.length; i++) {
-    var s = SPRINT_CONFIG[i];
-    if (date >= s.start && date <= s.end) return s.name;
+  for (var m = 0; m < MONTHS_CONFIG.length; m++) {
+    var month = MONTHS_CONFIG[m];
+    for (var s = 0; s < month.sprints.length; s++) {
+      var sprint = month.sprints[s];
+      if (date >= sprint.start && date <= sprint.end) {
+        return { month: month.id, sprint: sprint.name };
+      }
+    }
   }
   return null;
 }
 
-// Nomes alternativos aceitos para cada campo-chave
+// ============================================================
+// DETECÇÃO DE COLUNAS
+// ============================================================
+
 var COL_ALIASES = {
   nome:    ['nome', 'lead_nome'],
   empresa: ['empresa', 'company_name'],
@@ -142,22 +152,41 @@ function isCampaignSheet(name, headers) {
          findColIdx(headers, COL_ALIASES.bdr)     > -1;
 }
 
-function emptySprintObj() {
-  return { all: 0, S1: 0, S2: 0, S3: 0, S4: 0 };
+// ============================================================
+// ESTRUTURA DE MÉTRICAS (por mês + sprint)
+// ============================================================
+
+function emptyMonthSprints() {
+  var obj = { all: 0 };
+  MONTHS_CONFIG.forEach(function(m) {
+    obj[m.id] = { all: 0 };
+    m.sprints.forEach(function(s) { obj[m.id][s.name] = 0; });
+  });
+  return obj;
 }
 
 function emptyBDRMetric() {
-  return { total: emptySprintObj(), cath: emptySprintObj(), mat: emptySprintObj() };
+  return { total: emptyMonthSprints(), cath: emptyMonthSprints(), mat: emptyMonthSprints() };
 }
 
-function addCount(obj, bdrKey, sprint) {
+function addCount(obj, bdrKey, monthSprint) {
   obj.total.all++;
   obj[bdrKey].all++;
-  if (sprint && obj.total[sprint] !== undefined) {
-    obj.total[sprint]++;
-    obj[bdrKey][sprint]++;
+  if (monthSprint) {
+    var m = monthSprint.month;
+    var s = monthSprint.sprint;
+    if (obj.total[m] !== undefined) {
+      obj.total[m].all++;
+      if (s && obj.total[m][s] !== undefined) obj.total[m][s]++;
+      obj[bdrKey][m].all++;
+      if (s && obj[bdrKey][m][s] !== undefined) obj[bdrKey][m][s]++;
+    }
   }
 }
+
+// ============================================================
+// PROCESSAMENTO POR ABA
+// ============================================================
 
 function processCampaignSheet(sheet) {
   var name = sheet.getName();
@@ -172,7 +201,6 @@ function processCampaignSheet(sheet) {
   var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
   var statusIdx  = findColIdx(headers, COL_ALIASES.status);
 
-  // Todas as colunas "Data Envio"
   var dataEnvioIdxs = [];
   var headersLower = headers.map(function(h) { return String(h).toLowerCase().trim(); });
   for (var i = 0; i < headersLower.length; i++) {
@@ -197,31 +225,27 @@ function processCampaignSheet(sheet) {
 
     var bdrKey = (bdr === 'CATH') ? 'cath' : 'mat';
 
-    // Empresas únicas por BDR (dentro desta campanha)
     if (bdrKey === 'cath') empresasCath[empresa] = true;
     else                   empresasMat[empresa]  = true;
 
-    // Contatos
     contatos.total++;
     contatos[bdrKey]++;
 
-    // Mensagens
     for (var p = 0; p < dataEnvioIdxs.length; p++) {
       var dateVal = row[dataEnvioIdxs[p]];
       if (!dateVal) continue;
       var date = (dateVal instanceof Date) ? dateVal : new Date(dateVal);
       if (isNaN(date.getTime())) continue;
-      addCount(mensagens, bdrKey, getSprint(date));
+      addCount(mensagens, bdrKey, getMonthSprint(date));
     }
 
-    // MQLs
     if (statusGeral.toUpperCase() === 'MQL') {
       var mqlDate = null;
       for (var q = 0; q < dataEnvioIdxs.length; q++) {
         var dv = row[dataEnvioIdxs[q]];
         if (dv) { mqlDate = (dv instanceof Date) ? dv : new Date(dv); break; }
       }
-      addCount(mqls, bdrKey, mqlDate ? getSprint(mqlDate) : null);
+      addCount(mqls, bdrKey, mqlDate ? getMonthSprint(mqlDate) : null);
     }
   }
 
@@ -242,7 +266,6 @@ function processCampaignSheet(sheet) {
 
   return {
     name: name,
-    // listas brutas para dedup global (removidas antes de retornar ao cliente)
     _empresasCath: empresasCath,
     _empresasMat:  empresasMat,
     empresas:  empresas,
@@ -261,8 +284,11 @@ function processCampaignSheet(sheet) {
   };
 }
 
+// ============================================================
+// TOTAIS CONSOLIDADOS
+// ============================================================
+
 function calculateTotals(campaigns) {
-  // Deduplicação global — mesma empresa em 2 campanhas = conta 1 vez
   var globalCath = {};
   var globalMat  = {};
 
@@ -279,9 +305,15 @@ function calculateTotals(campaigns) {
     contatos.mat   += c.contatos.mat;
 
     ['total','cath','mat'].forEach(function(bdr) {
-      ['all','S1','S2','S3','S4'].forEach(function(s) {
-        mensagens[bdr][s] += c.mensagens[bdr][s];
-        mqls[bdr][s]      += c.mqls[bdr][s];
+      mensagens[bdr].all += c.mensagens[bdr].all;
+      mqls[bdr].all      += c.mqls[bdr].all;
+      MONTHS_CONFIG.forEach(function(m) {
+        mensagens[bdr][m.id].all += c.mensagens[bdr][m.id].all;
+        mqls[bdr][m.id].all      += c.mqls[bdr][m.id].all;
+        m.sprints.forEach(function(s) {
+          mensagens[bdr][m.id][s.name] += c.mensagens[bdr][m.id][s.name];
+          mqls[bdr][m.id][s.name]      += c.mqls[bdr][m.id][s.name];
+        });
       });
     });
   });
@@ -320,4 +352,44 @@ function calculateTotals(campaigns) {
 
 function round2(val) {
   return Math.round(val * 100) / 100;
+}
+
+// ============================================================
+// DEBUG
+// ============================================================
+
+function getDebugMqls() {
+  var rows = [];
+  MONTHS_CONFIG.forEach(function(monthCfg) {
+    var ss = SpreadsheetApp.openById(monthCfg.spreadsheetId);
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var name = sheet.getName();
+      if (monthCfg.allowedSheets !== null && monthCfg.allowedSheets.indexOf(name) === -1) continue;
+      var allValues = sheet.getDataRange().getValues();
+      if (allValues.length < 3) continue;
+      var headers = allValues[1].map(function(h) { return String(h).trim(); });
+      if (!isCampaignSheet(name, headers)) continue;
+      var nomeIdx    = findColIdx(headers, COL_ALIASES.nome);
+      var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
+      var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
+      var statusIdx  = findColIdx(headers, COL_ALIASES.status);
+      for (var r = 2; r < allValues.length; r++) {
+        var row = allValues[r];
+        var statusStr = String(statusIdx >= 0 ? row[statusIdx] : '').trim();
+        if (statusStr.toUpperCase() === 'MQL') {
+          var nome = String(row[nomeIdx] || '').trim();
+          var empresa = String(row[empresaIdx] || '').trim();
+          rows.push({
+            month: monthCfg.id, campaign: name,
+            nome: nome, empresa: empresa,
+            bdr: String(row[bdrIdx] || '').trim(),
+            statusRaw: statusStr, skipped: (!nome || !empresa)
+          });
+        }
+      }
+    }
+  });
+  return { count: rows.length, mqls: rows };
 }

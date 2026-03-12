@@ -438,9 +438,14 @@
     <div class="header-left">
       <h1>Outbound Dashboard</h1>
       <div class="header-divider"></div>
-      <span class="header-sub">Comp · Março 2026</span>
+      <span class="header-sub" id="header-sub">Comp · 2026</span>
     </div>
     <div class="header-controls">
+      <div class="sprint-tabs" id="month-tabs">
+        <button class="sprint-tab" data-month="all">Todos</button>
+        <button class="sprint-tab" data-month="FEB">Fev</button>
+        <button class="sprint-tab active" data-month="MAR">Mar</button>
+      </div>
       <div class="sprint-tabs" id="sprint-tabs">
         <button class="sprint-tab active" data-sprint="all">Consolidado</button>
         <button class="sprint-tab" data-sprint="S1">S1</button>
@@ -526,6 +531,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSTS6aaZKM6rNe
 const MQL_TARGET = 115;
 
 let _data    = null;
+let _month   = 'MAR';
 let _sprint  = 'all';
 let _bdr     = 'total';
 let _charts  = {};
@@ -568,11 +574,27 @@ async function refreshData() {
   }
 }
 
-document.getElementById('sprint-tabs').addEventListener('click', e => {
+document.getElementById('month-tabs').addEventListener('click', e => {
   const btn = e.target.closest('.sprint-tab');
   if (!btn) return;
+  _month = btn.dataset.month;
+  document.querySelectorAll('#month-tabs .sprint-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // reset sprint when switching months
+  _sprint = 'all';
+  document.querySelectorAll('#sprint-tabs .sprint-tab').forEach(b => b.classList.remove('active'));
+  document.querySelector('#sprint-tabs .sprint-tab[data-sprint="all"]').classList.add('active');
+  // disable sprint tabs when "Todos"
+  const sprintBtns = document.querySelectorAll('#sprint-tabs .sprint-tab:not([data-sprint="all"])');
+  sprintBtns.forEach(b => { b.disabled = _month === 'all'; b.style.opacity = _month === 'all' ? '0.35' : '1'; });
+  render();
+});
+
+document.getElementById('sprint-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.sprint-tab');
+  if (!btn || btn.disabled) return;
   _sprint = btn.dataset.sprint;
-  document.querySelectorAll('.sprint-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#sprint-tabs .sprint-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   render();
 });
@@ -586,10 +608,13 @@ document.querySelector('.bdr-toggle').addEventListener('click', e => {
   render();
 });
 
-function getVal(metric, bdr, sprint) {
+function getVal(metric, bdr, month, sprint) {
   const b = bdr === 'total' ? 'total' : bdr;
-  const s = sprint === 'all' ? 'all' : sprint;
-  return (metric && metric[b] && metric[b][s] != null) ? metric[b][s] : 0;
+  if (!metric || !metric[b]) return 0;
+  if (month === 'all') return metric[b].all || 0;
+  if (!metric[b][month]) return 0;
+  if (sprint === 'all') return metric[b][month].all || 0;
+  return metric[b][month][sprint] || 0;
 }
 
 function getEmp(campaign, bdr) {
@@ -632,6 +657,11 @@ function render() {
 function renderHeader() {
   document.getElementById('last-updated').textContent = 'Atualizado: ' + fmtDate(_data.lastUpdated);
   document.getElementById('footer-text').textContent  = 'Comp Outbound Dashboard · Atualizado em ' + fmtDate(_data.lastUpdated);
+  const months = _data.months || {};
+  const sub = _month === 'all'
+    ? 'Comp · Todos os meses'
+    : 'Comp · ' + (months[_month] ? months[_month].label : _month) + ' 2026';
+  document.getElementById('header-sub').textContent = sub;
 }
 
 function renderKPIs() {
@@ -642,8 +672,6 @@ function renderKPIs() {
   const mql = getVal(t.mqls,      _bdr, _sprint);
   const convRate = emp > 0 ? mql / emp : 0;
   const ce = emp > 0 ? (con / emp).toFixed(2) : '—';
-  const mqlPct = Math.min(100, (mql / MQL_TARGET * 100)).toFixed(0);
-
   document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi-card" onclick="openModal('empresas')">
       <div class="kpi-label">Empresas Únicas</div>
@@ -670,16 +698,16 @@ function renderKPIs() {
       <div class="kpi-label">Mensagens Enviadas</div>
       <div class="kpi-value">${msg}</div>
       <div class="kpi-sub">
-        <span><span class="dot-cath"></span>${getVal(t.mensagens,'cath',_sprint)} Cath</span>
-        <span><span class="dot-mat"></span>${getVal(t.mensagens,'mat',_sprint)} Mat</span>
+        <span><span class="dot-cath"></span>${getVal(t.mensagens,'cath',_month,_sprint)} Cath</span>
+        <span><span class="dot-mat"></span>${getVal(t.mensagens,'mat',_month,_sprint)} Mat</span>
       </div>
     </div>
     <div class="kpi-card accent" onclick="openModal('mqls')">
       <div class="kpi-label">MQLs</div>
       <div class="kpi-value red">${mql} <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${MQL_TARGET}</span></div>
       <div class="kpi-sub">
-        <span><span class="dot-cath"></span>${getVal(t.mqls,'cath',_sprint)} Cath</span>
-        <span><span class="dot-mat"></span>${getVal(t.mqls,'mat',_sprint)} Mat</span>
+        <span><span class="dot-cath"></span>${getVal(t.mqls,'cath',_month,_sprint)} Cath</span>
+        <span><span class="dot-mat"></span>${getVal(t.mqls,'mat',_month,_sprint)} Mat</span>
       </div>
     </div>
     <div class="kpi-card" onclick="openModal('conv')">
@@ -703,8 +731,8 @@ function renderTable() {
   function row(item, isTotal) {
     const emp  = getEmp(item, _bdr);
     const con  = getCon(item, _bdr);
-    const msg  = getVal(item.mensagens, _bdr, _sprint);
-    const mql  = getVal(item.mqls,      _bdr, _sprint);
+    const msg  = getVal(item.mensagens, _bdr, _month, _sprint);
+    const mql  = getVal(item.mqls,      _bdr, _month, _sprint);
     const ce   = emp > 0 ? (con / emp).toFixed(2) : '—';
     const conv = emp > 0 ? mql / emp : 0;
     const mpm  = mql > 0 ? (msg / mql).toFixed(1) : (msg > 0 ? msg : '—');
@@ -736,7 +764,7 @@ function buildMsgsData() {
     datasets: [
       {
         label: 'Total',
-        data: campaigns.map(c => getVal(c.mensagens, 'total', _sprint)),
+        data: campaigns.map(c => getVal(c.mensagens, 'total', _month, _sprint)),
         backgroundColor: '#88888833',
         borderColor: '#888888',
         borderWidth: 1.5,
@@ -744,7 +772,7 @@ function buildMsgsData() {
       },
       {
         label: 'Cath',
-        data: campaigns.map(c => getVal(c.mensagens, 'cath', _sprint)),
+        data: campaigns.map(c => getVal(c.mensagens, 'cath', _month, _sprint)),
         backgroundColor: '#F4364C99',
         borderColor: '#F4364C',
         borderWidth: 1.5,
@@ -752,7 +780,7 @@ function buildMsgsData() {
       },
       {
         label: 'Mat',
-        data: campaigns.map(c => getVal(c.mensagens, 'mat', _sprint)),
+        data: campaigns.map(c => getVal(c.mensagens, 'mat', _month, _sprint)),
         backgroundColor: '#11111166',
         borderColor: '#111111',
         borderWidth: 1.5,
@@ -770,7 +798,7 @@ function buildSprintsData() {
     datasets: [
       {
         label: 'Total',
-        data: sprintLabels.map(s => getVal(t.mensagens, 'total', s)),
+        data: sprintLabels.map(s => getVal(t.mensagens, 'total', _month === 'all' ? 'MAR' : _month, s)),
         backgroundColor: '#88888833',
         borderColor: '#888888',
         borderWidth: 1.5,
@@ -778,7 +806,7 @@ function buildSprintsData() {
       },
       {
         label: 'Cath',
-        data: sprintLabels.map(s => getVal(t.mensagens, 'cath', s)),
+        data: sprintLabels.map(s => getVal(t.mensagens, 'cath', _month === 'all' ? 'MAR' : _month, s)),
         backgroundColor: '#F4364C99',
         borderColor: '#F4364C',
         borderWidth: 1.5,
@@ -786,7 +814,7 @@ function buildSprintsData() {
       },
       {
         label: 'Mat',
-        data: sprintLabels.map(s => getVal(t.mensagens, 'mat', s)),
+        data: sprintLabels.map(s => getVal(t.mensagens, 'mat', _month === 'all' ? 'MAR' : _month, s)),
         backgroundColor: '#11111166',
         borderColor: '#111111',
         borderWidth: 1.5,
@@ -851,8 +879,8 @@ function renderBDRComparison() {
   function bdrCard(key, label, nameColor, pillClass) {
     const emp  = t.empresas[key];
     const con  = t.contatos[key];
-    const msg  = getVal(t.mensagens, key, _sprint);
-    const mql  = getVal(t.mqls,      key, _sprint);
+    const msg  = getVal(t.mensagens, key, _month, _sprint);
+    const mql  = getVal(t.mqls,      key, _month, _sprint);
     const conv = emp > 0 ? (mql / emp * 100).toFixed(1) : '0.0';
     const mpm  = mql > 0 ? (msg / mql).toFixed(1) : (msg > 0 ? msg : '—');
     return `
@@ -973,9 +1001,9 @@ function openModal(kpi) {
       desc: 'Total de mensagens enviadas na cadência de prospecção. Um contato pode receber várias mensagens ao longo do tempo — por exemplo, um primeiro contato, um follow-up e uma mensagem no LinkedIn são 3 mensagens para o mesmo contato.',
       formula: `Na planilha, cada coluna chamada "Data Envio" representa um touchpoint da cadência. Para cada contato, contamos quantas dessas colunas têm uma data preenchida — esse é o número de mensagens enviadas para aquele contato. Somamos tudo para chegar em ${msg} mensagens no total.`,
       breakdown: [
-        { label: 'Cath',  value: getVal(t.mensagens,'cath',_sprint) },
-        { label: 'Mat',   value: getVal(t.mensagens,'mat',_sprint)  },
-        { label: 'Total', value: getVal(t.mensagens,'total',_sprint) },
+        { label: 'Cath',  value: getVal(t.mensagens,'cath',_month,_sprint) },
+        { label: 'Mat',   value: getVal(t.mensagens,'mat',_month,_sprint)  },
+        { label: 'Total', value: getVal(t.mensagens,'total',_month,_sprint) },
         { label: 'Msgs / Contato', value: con > 0 ? (msg/con).toFixed(1) : '—' }
       ]
     },
@@ -985,8 +1013,8 @@ function openModal(kpi) {
       desc: `Lead qualificado pelo marketing que demonstrou interesse suficiente para entrar no pipeline de vendas. Um lead vira MQL quando o campo "Status Geral" na planilha é marcado como "MQL". Meta do mês: ${MQL_TARGET} MQLs. Progresso atual: ${((mql/MQL_TARGET)*100).toFixed(0)}%.`,
       formula: 'COUNT(linhas onde Status Geral = "MQL")',
       breakdown: [
-        { label: 'Cath',     value: getVal(t.mqls,'cath',_sprint) },
-        { label: 'Mat',      value: getVal(t.mqls,'mat',_sprint)  },
+        { label: 'Cath',     value: getVal(t.mqls,'cath',_month,_sprint) },
+        { label: 'Mat',      value: getVal(t.mqls,'mat',_month,_sprint)  },
         { label: 'Meta',     value: MQL_TARGET },
         { label: 'Faltam',   value: Math.max(0, MQL_TARGET - mql) }
       ]
