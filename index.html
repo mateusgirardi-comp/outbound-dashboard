@@ -837,8 +837,10 @@ function renderTable() {
     clusters.forEach(cl => {
       html += `<tr class="cluster-header"><td colspan="8">${cl.label}</td></tr>`;
       html += cl.items.map(c => makeRow(c, '')).join('');
-      const sub = clusterSubtotal(cl.items);
-      html += makeRow(sub, 'cluster-subtotal', `Subtotal ${cl.label}`, sub._msgs, sub._mqls);
+      if (cl.items.length > 1) {
+        const sub = clusterSubtotal(cl.items);
+        html += makeRow(sub, 'cluster-subtotal', `Subtotal ${cl.label}`, sub._msgs, sub._mqls);
+      }
     });
   } else {
     html += campaigns.map(c => makeRow(c, '')).join('');
