@@ -534,7 +534,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySBxVVd0hIOkbBfw4ok53wkkhLFfg4erNbpFMmq1rTExR3VqWAncjaVLX8neG7S-J8/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxM22ZkZK-C_Fb0xPwUItn6rqdXBpbWb-srffkqVkQ0L9QBzin_eID4iYDRqmBMqeI/exec';
 const MQL_TARGETS = { FEB: 80, MAR: 115 };
 function getMqlTarget() {
   if (_month === 'all') return Object.values(MQL_TARGETS).reduce((s, v) => s + v, 0);
@@ -723,6 +723,18 @@ function renderReachKPIs() {
   const months = _data.months || {};
   const monthLabel = months[_month] ? months[_month].label : _month;
   row.style.display = 'grid';
+
+  function sourceBreakdown(field) {
+    if (!r.by_source) return '';
+    return Object.keys(r.by_source).map(srcId => {
+      const val = r.by_source[srcId][field];
+      if (!val) return '';
+      const months = _data.months || {};
+      const lbl = months[srcId] ? months[srcId].label.slice(0,3) : srcId;
+      return `<span>${lbl}: ${val}</span>`;
+    }).filter(Boolean).join('');
+  }
+
   row.innerHTML = `
     <div class="kpi-card green">
       <div class="kpi-label">Empresas Alcançadas em ${monthLabel}</div>
@@ -731,6 +743,7 @@ function renderReachKPIs() {
         <span><span class="dot-cath"></span>${r.companies_cath} Cath</span>
         <span><span class="dot-mat"></span>${r.companies_mat} Mat</span>
       </div>
+      <div class="kpi-sub" style="margin-top:4px;color:var(--muted)">${sourceBreakdown('companies')}</div>
     </div>
     <div class="kpi-card green">
       <div class="kpi-label">Mensagens Enviadas em ${monthLabel}</div>
@@ -739,6 +752,7 @@ function renderReachKPIs() {
         <span><span class="dot-cath"></span>${r.messages_cath} Cath</span>
         <span><span class="dot-mat"></span>${r.messages_mat} Mat</span>
       </div>
+      <div class="kpi-sub" style="margin-top:4px;color:var(--muted)">${sourceBreakdown('messages')}</div>
     </div>`;
 }
 
