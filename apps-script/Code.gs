@@ -106,11 +106,14 @@ function getData() {
     });
   });
 
+  var reach = computeAllReachStats();
+
   return {
     lastUpdated: new Date().toISOString(),
     months: monthsMeta,
     totals: totals,
-    campaigns: campaigns
+    campaigns: campaigns,
+    reach: reach
   };
 }
 
@@ -370,6 +373,89 @@ function getCampaignType(name) {
   if (name.toLowerCase().indexOf('outbound de outras') > -1) return 'outros';
   if (name.toLowerCase().indexOf('cold') > -1) return 'cold';
   return 'engaged';
+}
+
+// ============================================================
+// REACH STATS (empresas/mensagens por mês calendario, cross-campanha)
+// ============================================================
+
+// Single pass over all sheets — computes reach for ALL months at once
+function computeAllReachStats() {
+  // Build accumulators and date ranges per month
+  var acc = {};
+  MONTHS_CONFIG.forEach(function(m) {
+    acc[m.id] = {
+      rangeStart: m.sprints[0].start,
+      rangeEnd:   m.sprints[m.sprints.length - 1].end,
+      both: {}, cath: {}, mat: {},
+      msgTotal: 0, msgCath: 0, msgMat: 0
+    };
+  });
+
+  MONTHS_CONFIG.forEach(function(monthCfg) {
+    var ss = SpreadsheetApp.openById(monthCfg.spreadsheetId);
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var name = sheet.getName();
+      if (monthCfg.allowedSheets !== null && monthCfg.allowedSheets.indexOf(name) === -1) continue;
+      var allValues = sheet.getDataRange().getValues();
+      if (allValues.length < 3) continue;
+      var headers = allValues[1].map(function(h) { return String(h).trim(); });
+      if (!isCampaignSheet(name, headers)) continue;
+
+      var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
+      var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
+      var headersLower = headers.map(function(h) { return String(h).toLowerCase().trim(); });
+      var dataEnvioIdxs = [];
+      for (var c = 0; c < headersLower.length; c++) {
+        if (headersLower[c] === 'data envio') dataEnvioIdxs.push(c);
+      }
+      if (dataEnvioIdxs.length === 0) continue;
+
+      for (var r = 2; r < allValues.length; r++) {
+        var row = allValues[r];
+        var empresa = String(row[empresaIdx] || '').trim();
+        if (!empresa) continue;
+        var bdr = String(row[bdrIdx] || '').trim().toUpperCase();
+        var bdrKey = (bdr === 'CATH') ? 'cath' : 'mat';
+
+        for (var p = 0; p < dataEnvioIdxs.length; p++) {
+          var dv = row[dataEnvioIdxs[p]];
+          if (!dv) continue;
+          var d = (dv instanceof Date) ? dv : new Date(dv);
+          if (isNaN(d.getTime())) continue;
+
+          // Check against each month's date range
+          var mIds = Object.keys(acc);
+          for (var mi = 0; mi < mIds.length; mi++) {
+            var mId = mIds[mi];
+            var a = acc[mId];
+            if (d >= a.rangeStart && d <= a.rangeEnd) {
+              a.both[empresa] = true;
+              a[bdrKey][empresa] = true;
+              a.msgTotal++;
+              if (bdrKey === 'cath') a.msgCath++; else a.msgMat++;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  var result = {};
+  MONTHS_CONFIG.forEach(function(m) {
+    var a = acc[m.id];
+    result[m.id] = {
+      companies:      Object.keys(a.both).length,
+      companies_cath: Object.keys(a.cath).length,
+      companies_mat:  Object.keys(a.mat).length,
+      messages:       a.msgTotal,
+      messages_cath:  a.msgCath,
+      messages_mat:   a.msgMat
+    };
+  });
+  return result;
 }
 
 // ============================================================

@@ -482,6 +482,9 @@
 
   <main>
 
+    <!-- Reach KPIs (cross-month) -->
+    <div id="reach-kpi-row" style="display:none; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;"></div>
+
     <!-- KPI Cards -->
     <div class="kpi-grid" id="kpi-grid"></div>
 
@@ -531,7 +534,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbRQQMcPBjO1biUi8S5k6uDSKt90f9b8ZmXFnFZLXXqVRZVp87VIT_rwItXyV0gSAG/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySBxVVd0hIOkbBfw4ok53wkkhLFfg4erNbpFMmq1rTExR3VqWAncjaVLX8neG7S-J8/exec';
 const MQL_TARGETS = { FEB: 80, MAR: 115 };
 function getMqlTarget() {
   if (_month === 'all') return Object.values(MQL_TARGETS).reduce((s, v) => s + v, 0);
@@ -710,7 +713,37 @@ function renderHeader() {
   });
 }
 
+function renderReachKPIs() {
+  const row = document.getElementById('reach-kpi-row');
+  if (_month === 'all' || !_data.reach || !_data.reach[_month]) {
+    row.style.display = 'none';
+    return;
+  }
+  const r = _data.reach[_month];
+  const months = _data.months || {};
+  const monthLabel = months[_month] ? months[_month].label : _month;
+  row.style.display = 'grid';
+  row.innerHTML = `
+    <div class="kpi-card green">
+      <div class="kpi-label">Empresas Alcançadas em ${monthLabel}</div>
+      <div class="kpi-value">${r.companies}</div>
+      <div class="kpi-sub">
+        <span><span class="dot-cath"></span>${r.companies_cath} Cath</span>
+        <span><span class="dot-mat"></span>${r.companies_mat} Mat</span>
+      </div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Mensagens Enviadas em ${monthLabel}</div>
+      <div class="kpi-value">${r.messages}</div>
+      <div class="kpi-sub">
+        <span><span class="dot-cath"></span>${r.messages_cath} Cath</span>
+        <span><span class="dot-mat"></span>${r.messages_mat} Mat</span>
+      </div>
+    </div>`;
+}
+
 function renderKPIs() {
+  renderReachKPIs();
   const t   = getFilteredStats();
   const emp = getEmp({ empresas: t.empresas }, _bdr);
   const con = getCon({ contatos: t.contatos }, _bdr);
