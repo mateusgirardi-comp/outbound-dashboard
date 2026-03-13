@@ -367,12 +367,7 @@ function round2(val) {
 }
 
 function getCampaignType(name) {
-  var lower = name.toLowerCase();
-  if (lower.indexOf('engaged') > -1 || lower.indexOf('webinar') > -1 ||
-      lower.indexOf('retargeting') > -1 || lower.indexOf('nurture') > -1) {
-    return 'engaged';
-  }
-  return 'cold';
+  return name.toLowerCase().indexOf('cold') > -1 ? 'cold' : 'engaged';
 }
 
 // ============================================================
