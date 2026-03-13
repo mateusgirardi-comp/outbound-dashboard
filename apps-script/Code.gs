@@ -55,6 +55,11 @@ function doGet(e) {
       .createTextOutput(JSON.stringify(getDebugMqls()))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  if (params.debug === 'msgs_month') {
+    return ContentService
+      .createTextOutput(JSON.stringify(getDebugMsgsByMonth(params.month || 'MAR')))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService
     .createTextOutput(JSON.stringify(getData()))
     .setMimeType(ContentService.MimeType.JSON);
@@ -399,4 +404,91 @@ function getDebugMqls() {
     }
   });
   return { count: rows.length, mqls: rows };
+}
+
+// Returns unique companies messaged in a given calendar month (by date of send),
+// across ALL spreadsheets — so FEB campaigns messaged in MAR are counted.
+function getDebugMsgsByMonth(targetMonthId) {
+  var targetCfg = null;
+  for (var i = 0; i < MONTHS_CONFIG.length; i++) {
+    if (MONTHS_CONFIG[i].id === targetMonthId) { targetCfg = MONTHS_CONFIG[i]; break; }
+  }
+  if (!targetCfg) return { error: 'Month not found: ' + targetMonthId };
+
+  // Date range: first sprint start to last sprint end of target month
+  var sprints = targetCfg.sprints;
+  var rangeStart = sprints[0].start;
+  var rangeEnd   = sprints[sprints.length - 1].end;
+
+  var cathEmpresas = {};
+  var matEmpresas  = {};
+  var bothEmpresas = {};
+  var details = [];
+
+  MONTHS_CONFIG.forEach(function(monthCfg) {
+    var ss = SpreadsheetApp.openById(monthCfg.spreadsheetId);
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var name = sheet.getName();
+      if (monthCfg.allowedSheets !== null && monthCfg.allowedSheets.indexOf(name) === -1) continue;
+      var allValues = sheet.getDataRange().getValues();
+      if (allValues.length < 3) continue;
+      var headers = allValues[1].map(function(h) { return String(h).trim(); });
+      if (!isCampaignSheet(name, headers)) continue;
+
+      var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
+      var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
+      var headersLower = headers.map(function(h) { return String(h).toLowerCase().trim(); });
+      var dataEnvioIdxs = [];
+      for (var c = 0; c < headersLower.length; c++) {
+        if (headersLower[c] === 'data envio') dataEnvioIdxs.push(c);
+      }
+      if (dataEnvioIdxs.length === 0) continue;
+
+      for (var r = 2; r < allValues.length; r++) {
+        var row = allValues[r];
+        var empresa = String(row[empresaIdx] || '').trim();
+        if (!empresa) continue;
+        var bdr = String(row[bdrIdx] || '').trim().toUpperCase();
+        var bdrKey = (bdr === 'CATH') ? 'cath' : 'mat';
+
+        var msgInMonth = false;
+        for (var p = 0; p < dataEnvioIdxs.length; p++) {
+          var dv = row[dataEnvioIdxs[p]];
+          if (!dv) continue;
+          var d = (dv instanceof Date) ? dv : new Date(dv);
+          if (isNaN(d.getTime())) continue;
+          if (d >= rangeStart && d <= rangeEnd) { msgInMonth = true; break; }
+        }
+
+        if (msgInMonth) {
+          bothEmpresas[empresa] = true;
+          if (bdrKey === 'cath') cathEmpresas[empresa] = true;
+          else                   matEmpresas[empresa]  = true;
+          details.push({ campaign: name, empresa: empresa, bdr: bdr });
+        }
+      }
+    }
+  });
+
+  // Deduplicate details per empresa+bdr
+  var seen = {};
+  var dedupedDetails = [];
+  details.forEach(function(d) {
+    var key = d.empresa + '|' + d.bdr;
+    if (!seen[key]) { seen[key] = true; dedupedDetails.push(d); }
+  });
+
+  return {
+    month: targetMonthId,
+    total:  Object.keys(bothEmpresas).length,
+    cath:   Object.keys(cathEmpresas).length,
+    mat:    Object.keys(matEmpresas).length,
+    overlap: Object.keys(cathEmpresas).filter(function(k) { return matEmpresas[k]; }).length,
+    empresas: Object.keys(bothEmpresas).sort(),
+    cath_empresas: Object.keys(cathEmpresas).sort(),
+    mat_empresas:  Object.keys(matEmpresas).sort(),
+    details: dedupedDetails
+  };
 }
