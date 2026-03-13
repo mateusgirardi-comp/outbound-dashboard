@@ -367,7 +367,9 @@ function round2(val) {
 }
 
 function getCampaignType(name) {
-  return name.toLowerCase().indexOf('cold') > -1 ? 'cold' : 'engaged';
+  if (name.toLowerCase().indexOf('outbound de outras') > -1) return 'outros';
+  if (name.toLowerCase().indexOf('cold') > -1) return 'cold';
+  return 'engaged';
 }
 
 // ============================================================

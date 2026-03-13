@@ -545,7 +545,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzoIaMHewGRbywh6yWlw3CShSGe_5CVB_rpOR2CNvgiZFe6CtFEVeZ5sDabfpAk0Cze/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbRQQMcPBjO1biUi8S5k6uDSKt90f9b8ZmXFnFZLXXqVRZVp87VIT_rwItXyV0gSAG/exec';
 const MQL_TARGETS = { FEB: 80, MAR: 115 };
 function getMqlTarget() {
   if (_month === 'all') return Object.values(MQL_TARGETS).reduce((s, v) => s + v, 0);
@@ -828,27 +828,27 @@ function renderTable() {
     };
   }
 
-  const cold    = campaigns.filter(c => c.type !== 'engaged');
   const engaged = campaigns.filter(c => c.type === 'engaged');
-  const showClusters = cold.length > 0 && engaged.length > 0;
+  const cold    = campaigns.filter(c => c.type === 'cold');
+  const outros  = campaigns.filter(c => c.type === 'outros');
+
+  const clusters = [
+    { key: 'engaged', label: 'Engaged', items: engaged },
+    { key: 'cold',    label: 'Cold',    items: cold    },
+    { key: 'outros',  label: 'Outbound de Outras Fontes', items: outros },
+  ].filter(cl => cl.items.length > 0);
+
+  const showClusters = clusters.length > 1;
 
   let html = '';
 
   if (showClusters) {
-    // Cold cluster
-    if (cold.length > 0) {
-      html += `<tr class="cluster-header"><td colspan="8">Cold</td></tr>`;
-      html += cold.map(c => makeRow(c, '')).join('');
-      const sub = clusterSubtotal(cold);
-      html += makeRow(sub, 'cluster-subtotal', 'Subtotal Cold', sub._msgs, sub._mqls);
-    }
-    // Engaged cluster
-    if (engaged.length > 0) {
-      html += `<tr class="cluster-header"><td colspan="8">Engaged</td></tr>`;
-      html += engaged.map(c => makeRow(c, '')).join('');
-      const sub = clusterSubtotal(engaged);
-      html += makeRow(sub, 'cluster-subtotal', 'Subtotal Engaged', sub._msgs, sub._mqls);
-    }
+    clusters.forEach(cl => {
+      html += `<tr class="cluster-header"><td colspan="8">${cl.label}</td></tr>`;
+      html += cl.items.map(c => makeRow(c, '')).join('');
+      const sub = clusterSubtotal(cl.items);
+      html += makeRow(sub, 'cluster-subtotal', `Subtotal ${cl.label}`, sub._msgs, sub._mqls);
+    });
   } else {
     html += campaigns.map(c => makeRow(c, '')).join('');
   }
