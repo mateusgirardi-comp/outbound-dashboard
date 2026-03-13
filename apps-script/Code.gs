@@ -86,7 +86,7 @@ function getData() {
       }
 
       var result = processCampaignSheet(sheet, monthCfg.id);
-      if (result) { result.monthId = monthCfg.id; campaigns.push(result); }
+      if (result) { result.monthId = monthCfg.id; result.type = getCampaignType(result.name); campaigns.push(result); }
     }
   }
 
@@ -366,6 +366,15 @@ function round2(val) {
   return Math.round(val * 100) / 100;
 }
 
+function getCampaignType(name) {
+  var lower = name.toLowerCase();
+  if (lower.indexOf('engaged') > -1 || lower.indexOf('webinar') > -1 ||
+      lower.indexOf('retargeting') > -1 || lower.indexOf('nurture') > -1) {
+    return 'engaged';
+  }
+  return 'cold';
+}
+
 // ============================================================
 // DEBUG
 // ============================================================
@@ -424,6 +433,9 @@ function getDebugMsgsByMonth(targetMonthId) {
   var matEmpresas  = {};
   var bothEmpresas = {};
   var details = [];
+  var msgTotal = 0;
+  var msgCath  = 0;
+  var msgMat   = 0;
 
   MONTHS_CONFIG.forEach(function(monthCfg) {
     var ss = SpreadsheetApp.openById(monthCfg.spreadsheetId);
@@ -466,6 +478,18 @@ function getDebugMsgsByMonth(targetMonthId) {
           bothEmpresas[empresa] = true;
           if (bdrKey === 'cath') cathEmpresas[empresa] = true;
           else                   matEmpresas[empresa]  = true;
+
+          // Count all messages sent in this month for this row
+          for (var p2 = 0; p2 < dataEnvioIdxs.length; p2++) {
+            var dv2 = row[dataEnvioIdxs[p2]];
+            if (!dv2) continue;
+            var d2 = (dv2 instanceof Date) ? dv2 : new Date(dv2);
+            if (isNaN(d2.getTime())) continue;
+            if (d2 >= rangeStart && d2 <= rangeEnd) {
+              msgTotal++;
+              if (bdrKey === 'cath') msgCath++; else msgMat++;
+            }
+          }
           details.push({ campaign: name, empresa: empresa, bdr: bdr });
         }
       }
@@ -486,6 +510,9 @@ function getDebugMsgsByMonth(targetMonthId) {
     cath:   Object.keys(cathEmpresas).length,
     mat:    Object.keys(matEmpresas).length,
     overlap: Object.keys(cathEmpresas).filter(function(k) { return matEmpresas[k]; }).length,
+    msgs_total: msgTotal,
+    msgs_cath:  msgCath,
+    msgs_mat:   msgMat,
     empresas: Object.keys(bothEmpresas).sort(),
     cath_empresas: Object.keys(cathEmpresas).sort(),
     mat_empresas:  Object.keys(matEmpresas).sort(),

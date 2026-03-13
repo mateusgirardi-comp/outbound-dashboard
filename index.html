@@ -221,6 +221,24 @@
       font-weight: 700;
       border-top: 2px solid var(--border);
     }
+    tbody tr.cluster-header td {
+      padding: 6px 16px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted);
+      background: #f7f7f7;
+      border-top: 2px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr.cluster-header:first-child td { border-top: none; }
+    tbody tr.cluster-subtotal {
+      background: #f9f9f9;
+      font-weight: 600;
+      border-top: 1px dashed var(--border);
+      border-bottom: 2px solid var(--border);
+    }
+    tbody tr.cluster-subtotal td { font-size: 12px; color: var(--muted); }
+    tbody tr.cluster-subtotal td:first-child { color: var(--text); }
     tbody td { padding: 11px 16px; font-size: 13px; white-space: nowrap; }
     tbody td:not(:first-child) { text-align: center; }
     .campaign-name { font-weight: 500; }
@@ -505,7 +523,7 @@
       </div>
       <div class="chart-card chart-clickable" onclick="openChartModal('sprints')">
         <div class="section-header">
-          <div class="section-title">Mensagens por Sprint</div>
+          <div class="section-title">Mensagens por Semana</div>
           <span class="chart-expand-hint">⤢ ampliar</span>
         </div>
         <div style="position:relative;height:240px;">
@@ -527,7 +545,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyTMWKNSpuqHQNyxXS2d0-vHkrdB1sRW-rq-E8acjHxxoQ2p0An0_8YU8S_TkWN88Dh/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzuXFLi2CiSkXZ9CEQc6wvaWc_MWIHHgemL5AtiiNuBd6WD33NOUR9emMi8wkRYzx8/exec';
 const MQL_TARGETS = { FEB: 80, MAR: 115 };
 function getMqlTarget() {
   if (_month === 'all') return Object.values(MQL_TARGETS).reduce((s, v) => s + v, 0);
@@ -767,22 +785,22 @@ function renderTable() {
   const campaigns = getFilteredCampaigns();
   const t         = getFilteredStats();
 
-  const sprintLabel = _sprint === 'all' ? 'Total' : _sprint;
+  const semanaLabel = _sprint === 'all' ? 'Total' : _sprint;
   document.getElementById('table-subtitle').textContent =
-    `${campaigns.length} campanhas · ${sprintLabel}`;
+    `${campaigns.length} campanhas · ${semanaLabel}`;
 
-  function row(item, isTotal) {
+  function makeRow(item, rowClass, nameOverride, msgOverride, mqlOverride) {
     const emp  = getEmp(item, _bdr);
     const con  = getCon(item, _bdr);
-    const msg  = getVal(item.mensagens, _bdr, _month, _sprint);
-    const mql  = getVal(item.mqls,      _bdr, _month, _sprint);
+    const msg  = msgOverride !== undefined ? msgOverride : getVal(item.mensagens, _bdr, _month, _sprint);
+    const mql  = mqlOverride !== undefined ? mqlOverride : getVal(item.mqls,      _bdr, _month, _sprint);
+    const name = nameOverride !== undefined ? nameOverride : item.name;
     const ce   = emp > 0 ? (con / emp).toFixed(2) : '—';
     const conv = emp > 0 ? mql / emp : 0;
     const mpm  = mql > 0 ? (msg / mql).toFixed(1) : (msg > 0 ? msg : '—');
-
     return `
-      <tr class="${isTotal ? 'totals-row' : ''}">
-        <td class="campaign-name">${isTotal ? 'Total' : item.name}</td>
+      <tr class="${rowClass}">
+        <td class="campaign-name">${name}</td>
         <td>${emp}</td>
         <td>${con}</td>
         <td>${ce}</td>
@@ -793,10 +811,55 @@ function renderTable() {
       </tr>`;
   }
 
-  const rows = campaigns.map(c => row(c, false)).join('');
-  const totalsRow = row({ name: 'Total', empresas: t.empresas, contatos: t.contatos, mensagens: t.mensagens, mqls: t.mqls }, true);
+  function clusterSubtotal(group) {
+    const allEmps = {};
+    group.forEach(c => (c.empresas.list || []).forEach(e => allEmps[e] = true));
+    const empCath  = group.reduce((s, c) => s + c.empresas.cath,  0);
+    const empMat   = group.reduce((s, c) => s + c.empresas.mat,   0);
+    const conTotal = group.reduce((s, c) => s + c.contatos.total, 0);
+    const conCath  = group.reduce((s, c) => s + c.contatos.cath,  0);
+    const conMat   = group.reduce((s, c) => s + c.contatos.mat,   0);
+    const msgs = group.reduce((s, c) => s + getVal(c.mensagens, _bdr, _month, _sprint), 0);
+    const mqls = group.reduce((s, c) => s + getVal(c.mqls,      _bdr, _month, _sprint), 0);
+    return {
+      empresas: { total: Object.keys(allEmps).length, cath: empCath, mat: empMat, list: Object.keys(allEmps) },
+      contatos: { total: conTotal, cath: conCath, mat: conMat },
+      _msgs: msgs, _mqls: mqls
+    };
+  }
 
-  document.getElementById('campaign-tbody').innerHTML = rows + totalsRow;
+  const cold    = campaigns.filter(c => c.type !== 'engaged');
+  const engaged = campaigns.filter(c => c.type === 'engaged');
+  const showClusters = cold.length > 0 && engaged.length > 0;
+
+  let html = '';
+
+  if (showClusters) {
+    // Cold cluster
+    if (cold.length > 0) {
+      html += `<tr class="cluster-header"><td colspan="8">Cold</td></tr>`;
+      html += cold.map(c => makeRow(c, '')).join('');
+      const sub = clusterSubtotal(cold);
+      html += makeRow(sub, 'cluster-subtotal', 'Subtotal Cold', sub._msgs, sub._mqls);
+    }
+    // Engaged cluster
+    if (engaged.length > 0) {
+      html += `<tr class="cluster-header"><td colspan="8">Engaged</td></tr>`;
+      html += engaged.map(c => makeRow(c, '')).join('');
+      const sub = clusterSubtotal(engaged);
+      html += makeRow(sub, 'cluster-subtotal', 'Subtotal Engaged', sub._msgs, sub._mqls);
+    }
+  } else {
+    html += campaigns.map(c => makeRow(c, '')).join('');
+  }
+
+  // Total row
+  html += makeRow(
+    { name: 'Total', empresas: t.empresas, contatos: t.contatos, mensagens: t.mensagens, mqls: t.mqls },
+    'totals-row'
+  );
+
+  document.getElementById('campaign-tbody').innerHTML = html;
 }
 
 function buildMsgsData() {
@@ -892,7 +955,7 @@ function renderCharts() {
 let _chartModalInstance = null;
 
 function openChartModal(id) {
-  const titles = { msgs: 'Mensagens por Campanha', sprints: 'Mensagens por Sprint' };
+  const titles = { msgs: 'Mensagens por Campanha', sprints: 'Mensagens por Semana' };
   const data   = id === 'msgs' ? buildMsgsData() : buildSprintsData();
 
   document.getElementById('chart-modal-title').textContent = titles[id] || '';
