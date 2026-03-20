@@ -861,16 +861,12 @@ function renderTable() {
   }
 
   const engaged = campaigns.filter(c => c.type === 'engaged');
-  const intent  = campaigns.filter(c => c.type === 'intent');
-  const evento  = campaigns.filter(c => c.type === 'evento');
   const cold    = campaigns.filter(c => c.type === 'cold');
   const outros  = campaigns.filter(c => c.type === 'outros');
 
   const clusters = [
-    { key: 'engaged', label: 'Engaged',  items: engaged },
-    { key: 'intent',  label: 'Intent',   items: intent  },
-    { key: 'evento',  label: 'Evento',   items: evento  },
-    { key: 'cold',    label: 'Cold',     items: cold    },
+    { key: 'engaged', label: 'Engaged', items: engaged },
+    { key: 'cold',    label: 'Cold',    items: cold    },
     { key: 'outros',  label: 'Outbound de Outras Fontes', items: outros },
   ].filter(cl => cl.items.length > 0);
 
