@@ -534,7 +534,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxM22ZkZK-C_Fb0xPwUItn6rqdXBpbWb-srffkqVkQ0L9QBzin_eID4iYDRqmBMqeI/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0l5nknWmv3F3KNWqW0ItjKTbZREZ0472Uy1nLuPv7lw8q-iF3lMz2xpTsjCbrxMAZ/exec';
 const MQL_TARGETS = { FEB: 80, MAR: 115 };
 function getMqlTarget() {
   if (_month === 'all') return Object.values(MQL_TARGETS).reduce((s, v) => s + v, 0);
@@ -861,12 +861,16 @@ function renderTable() {
   }
 
   const engaged = campaigns.filter(c => c.type === 'engaged');
+  const intent  = campaigns.filter(c => c.type === 'intent');
+  const evento  = campaigns.filter(c => c.type === 'evento');
   const cold    = campaigns.filter(c => c.type === 'cold');
   const outros  = campaigns.filter(c => c.type === 'outros');
 
   const clusters = [
-    { key: 'engaged', label: 'Engaged', items: engaged },
-    { key: 'cold',    label: 'Cold',    items: cold    },
+    { key: 'engaged', label: 'Engaged',  items: engaged },
+    { key: 'intent',  label: 'Intent',   items: intent  },
+    { key: 'evento',  label: 'Evento',   items: evento  },
+    { key: 'cold',    label: 'Cold',     items: cold    },
     { key: 'outros',  label: 'Outbound de Outras Fontes', items: outros },
   ].filter(cl => cl.items.length > 0);
 
