@@ -1042,11 +1042,11 @@ function getLeadsData() {
       email:     String(r[9]  || ''),
       status:    String(r[10] || ''),
       fups: [
-        { status: String(r[11] || ''), date: formatDateVal(r[12]), answered: String(r[13] || '') },
-        { status: String(r[14] || ''), date: formatDateVal(r[15]), answered: String(r[16] || '') },
-        { status: String(r[17] || ''), date: formatDateVal(r[18]), answered: String(r[19] || '') },
-        { status: String(r[20] || ''), date: formatDateVal(r[21]), answered: String(r[22] || '') },
-        { status: String(r[23] || ''), date: formatDateVal(r[24]), answered: String(r[25] || '') }
+        { status: String(r[11] || ''), date: formatDateVal(r[12]), answered: formatDateVal(r[13]) },
+        { status: String(r[14] || ''), date: formatDateVal(r[15]), answered: formatDateVal(r[16]) },
+        { status: String(r[17] || ''), date: formatDateVal(r[18]), answered: formatDateVal(r[19]) },
+        { status: String(r[20] || ''), date: formatDateVal(r[21]), answered: formatDateVal(r[22]) },
+        { status: String(r[23] || ''), date: formatDateVal(r[24]), answered: formatDateVal(r[25]) }
       ]
     });
   }
@@ -1060,8 +1060,8 @@ function updateLeadCell(row, col, value) {
     cell.clearContent();
     return;
   }
-  // Colunas de data (1-based): FUP1=13, FUP2=16, FUP3=19, FUP4=22, FUP5=25
-  var dateCols = [13, 16, 19, 22, 25];
+  // Colunas de data (1-based): Data Envio=13,16,19,22,25 | Data Resp=14,17,20,23,26
+  var dateCols = [13, 14, 16, 17, 19, 20, 22, 23, 25, 26];
   if (dateCols.indexOf(col) > -1) {
     var parts = String(value).split('-');
     if (parts.length === 3) {

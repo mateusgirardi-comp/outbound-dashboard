@@ -591,7 +591,7 @@
     .prosp-col-status   { width: 135px; border-right: 2px solid var(--border) !important; }
     .prosp-col-fup-status { width: 105px; }
     .prosp-col-fup-date   { width: 58px; }
-    .prosp-col-fup-ans    { width: 76px; border-right: 2px solid var(--border) !important; }
+    .prosp-col-fup-ans    { width: 58px; border-right: 2px solid var(--border) !important; }
 
     .prosp-cell-select:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
     td.prosp-fup-locked { opacity: 0.3; pointer-events: none; }
@@ -1964,7 +1964,7 @@ function renderProspecting() {
   // opções fixas conforme data validation da planilha original
   const STATUS_OPTS = ['', 'MQL', 'NO INTEREST', 'HOLD', 'WAITING', 'WRONG PERSON', 'NO ANSWER', 'ISSUE NUMBER'];
   const FUP_OPTS    = ['', 'ANSWERED', 'NO ANSWER', 'WRONG NUMBER'];
-  const ANS_OPTS    = ['', 'Sim', 'Não'];
+  // ANS_OPTS removido — coluna Resp? é data
 
   const fmtDdMm = iso => {
     if (!iso) return '—';
@@ -2013,9 +2013,11 @@ function renderProspecting() {
           </div>
         </td>
         <td class="prosp-col-fup-ans${lkAns ? ' prosp-fup-locked' : ''}">
-          <select class="prosp-cell-select" data-field="fup${i}_answered" onchange="saveLeadCell(this)"${lkAns ? ' disabled' : ''}>
-            ${opts(ANS_OPTS, f.answered)}
-          </select>
+          <div class="prosp-date-wrap">
+            <span class="prosp-date-display${f.answered ? '' : ' empty'}">${fmtDdMm(f.answered)}</span>
+            <input class="prosp-date-input" type="date" data-field="fup${i}_answered"
+              value="${escHtml(f.answered)}" onchange="saveLeadCell(this);updateDateDisplay(this)"${lkAns ? ' disabled' : ''}>
+          </div>
         </td>`;
       }).join('')}
     </tr>`;
@@ -2041,17 +2043,18 @@ async function saveLeadCell(el) {
     }
   }
 
-  // ── Lógica 1: preencher data do FUP N → marca Resp? do FUP N-1 como "Não" se vazia
-  const fupDateMatch = field.match(/^fup(\d)_date$/);
-  if (fupDateMatch && value) {
-    const fupIdx = parseInt(fupDateMatch[1]);
-    if (fupIdx > 0 && lead && !lead.fups[fupIdx - 1].answered) {
-      const prevField = `fup${fupIdx - 1}_answered`;
-      const prevCol   = PROSP_COL[prevField];
-      lead.fups[fupIdx - 1].answered = 'Não';
-      const prevSel = tr.querySelector(`[data-field="${prevField}"]`);
-      if (prevSel) prevSel.value = 'Não';
-      fetch(`${APPS_SCRIPT_URL}?action=update_lead&row=${row}&col=${prevCol}&value=${encodeURIComponent('Não')}`);
+  // ── Lógica 1: preencher data Resp? → auto-seta Status do mesmo FUP como ANSWERED
+  const fupAnsMatch = field.match(/^fup(\d)_answered$/);
+  if (fupAnsMatch && value && lead) {
+    const fupIdx    = parseInt(fupAnsMatch[1]);
+    const fup       = lead.fups[fupIdx];
+    if (!fup.status) {
+      const stField = `fup${fupIdx}_status`;
+      const stCol   = PROSP_COL[stField];
+      fup.status = 'ANSWERED';
+      const stSel = tr.querySelector(`[data-field="${stField}"]`);
+      if (stSel) { stSel.value = 'ANSWERED'; colorCell(stSel, PROSP_FUP_STYLE); }
+      fetch(`${APPS_SCRIPT_URL}?action=update_lead&row=${row}&col=${stCol}&value=ANSWERED`);
     }
   }
 
