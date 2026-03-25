@@ -443,10 +443,11 @@ function computeAllReachStats() {
       rangeEnd:   m.sprints[m.sprints.length - 1].end,
       both: {}, cath: {}, mat: {},
       msgTotal: 0, msgCath: 0, msgMat: 0,
+      conBoth: {}, conCath: {}, conMat: {},
       by_source: {}
     };
     MONTHS_CONFIG.forEach(function(src) {
-      acc[m.id].by_source[src.id] = { both: {}, msgTotal: 0 };
+      acc[m.id].by_source[src.id] = { both: {}, msgTotal: 0, conBoth: {} };
     });
   });
 
@@ -478,6 +479,8 @@ function computeAllReachStats() {
         var row = allValues[r];
         var empresa = String(row[empresaIdx] || '').trim();
         if (!empresa) continue;
+        var nome = nomeIdx >= 0 ? String(row[nomeIdx] || '').trim() : '';
+        var conKey = empresa + '|' + nome;
         var bdr = String(row[bdrIdx] || '').trim().toUpperCase();
         var bdrKey = (bdr === 'CATH') ? 'cath' : 'mat';
 
@@ -496,9 +499,12 @@ function computeAllReachStats() {
               a[bdrKey][empresa] = true;
               a.msgTotal++;
               if (bdrKey === 'cath') a.msgCath++; else a.msgMat++;
+              a.conBoth[conKey] = true;
+              if (bdrKey === 'cath') a.conCath[conKey] = true; else a.conMat[conKey] = true;
               // track by source campaign month
               a.by_source[srcId].both[empresa] = true;
               a.by_source[srcId].msgTotal++;
+              a.by_source[srcId].conBoth[conKey] = true;
             }
           }
         }
@@ -513,7 +519,8 @@ function computeAllReachStats() {
     MONTHS_CONFIG.forEach(function(src) {
       bySource[src.id] = {
         companies: Object.keys(a.by_source[src.id].both).length,
-        messages:  a.by_source[src.id].msgTotal
+        messages:  a.by_source[src.id].msgTotal,
+        contacts:  Object.keys(a.by_source[src.id].conBoth).length
       };
     });
     result[m.id] = {
@@ -523,6 +530,9 @@ function computeAllReachStats() {
       messages:       a.msgTotal,
       messages_cath:  a.msgCath,
       messages_mat:   a.msgMat,
+      contacts:       Object.keys(a.conBoth).length,
+      contacts_cath:  Object.keys(a.conCath).length,
+      contacts_mat:   Object.keys(a.conMat).length,
       by_source:      bySource
     };
   });

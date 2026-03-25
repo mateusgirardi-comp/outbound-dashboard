@@ -140,15 +140,23 @@
     /* ── Main layout ── */
     main { padding: 28px 32px; max-width: 1440px; margin: 0 auto; }
 
-    /* ── KPI Cards ── */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 14px; margin-bottom: 28px;
+    /* ── KPI Groups ── */
+    .kpi-groups { display: flex; flex-direction: column; gap: 18px; margin-bottom: 28px; }
+    .kpi-group-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
     }
-    @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 700px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 500px)  { .kpi-grid { grid-template-columns: 1fr; } }
+    .kpi-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted); white-space: nowrap;
+    }
+    .kpi-group-header::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .kpi-group-cards { display: flex; gap: 12px; flex-wrap: wrap; }
+    .kpi-group-cards .kpi-card { flex: 1; min-width: 150px; }
+    .kpi-card--cross { border-top: 3px solid var(--green) !important; }
+    .kpi-card--cross::before { display: none; }
+    .kpi-src { gap: 10px; margin-top: 4px; color: var(--muted); font-size: 11px; }
 
     .kpi-card {
       background: var(--card);
@@ -624,11 +632,8 @@
 
   <main>
 
-    <!-- Reach KPIs (cross-month) -->
-    <div id="reach-kpi-row" style="display:none; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;"></div>
-
-    <!-- KPI Cards -->
-    <div class="kpi-grid" id="kpi-grid"></div>
+    <!-- KPI Groups -->
+    <div class="kpi-groups" id="kpi-groups"></div>
 
     <!-- Campaign Table -->
     <div class="section-header">
@@ -906,117 +911,118 @@ function renderHeader() {
   });
 }
 
-function renderReachKPIs() {
-  const row = document.getElementById('reach-kpi-row');
-  if (_month === 'all' || !_data.reach || !_data.reach[_month]) {
-    row.style.display = 'none';
-    return;
-  }
-  const r = _data.reach[_month];
-  const months = _data.months || {};
-  const monthLabel = months[_month] ? months[_month].label : _month;
-  row.style.display = 'grid';
-
-  function sourceBreakdown(field) {
-    if (!r.by_source) return '';
-    return Object.keys(r.by_source).map(srcId => {
-      const val = r.by_source[srcId][field];
-      if (!val) return '';
-      const months = _data.months || {};
-      const lbl = months[srcId] ? months[srcId].label.slice(0,3) : srcId;
-      return `<span>${lbl}: ${val}</span>`;
-    }).filter(Boolean).join('');
-  }
-
-  row.innerHTML = `
-    <div class="kpi-card green">
-      <div class="kpi-label">Empresas Alcançadas em ${monthLabel}</div>
-      <div class="kpi-value">${r.companies}</div>
-      <div class="kpi-sub">
-        <span><span class="dot-cath"></span>${r.companies_cath} Cath</span>
-        <span><span class="dot-mat"></span>${r.companies_mat} Mat</span>
-      </div>
-      <div class="kpi-sub" style="margin-top:4px;color:var(--muted)">${sourceBreakdown('companies')}</div>
-    </div>
-    <div class="kpi-card green">
-      <div class="kpi-label">Mensagens Enviadas em ${monthLabel}</div>
-      <div class="kpi-value">${r.messages}</div>
-      <div class="kpi-sub">
-        <span><span class="dot-cath"></span>${r.messages_cath} Cath</span>
-        <span><span class="dot-mat"></span>${r.messages_mat} Mat</span>
-      </div>
-      <div class="kpi-sub" style="margin-top:4px;color:var(--muted)">${sourceBreakdown('messages')}</div>
-    </div>`;
-}
-
 function renderKPIs() {
-  renderReachKPIs();
   const t   = getFilteredStats();
   const emp = getEmp({ empresas: t.empresas }, _bdr);
   const con = getCon({ contatos: t.contatos }, _bdr);
   const msg = getVal(t.mensagens, _bdr, _month, _sprint);
-  const mql = getVal(t.mqls,      _bdr, _month, _sprint);
+  const mql = getVal(t.mqls, _bdr, _month, _sprint);
   const convRate = emp > 0 ? mql / emp : 0;
   const ce = emp > 0 ? (con / emp).toFixed(2) : '—';
-  document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi-card" onclick="openModal('empresas')">
-      <div class="kpi-label">Empresas Únicas</div>
-      <div class="kpi-value">${emp}</div>
-      <div class="kpi-sub">
-        <span><span class="dot-cath"></span>${t.empresas.cath} Cath</span>
-        <span><span class="dot-mat"></span>${t.empresas.mat} Mat</span>
+
+  const r = (_month !== 'all' && _data.reach && _data.reach[_month]) ? _data.reach[_month] : null;
+  const months = _data.months || {};
+  const monthLabel = months[_month] ? months[_month].label : _month;
+
+  const srcBreak = (field) => {
+    if (!r || !r.by_source) return '';
+    return Object.keys(r.by_source).map(srcId => {
+      const val = r.by_source[srcId][field];
+      if (!val) return '';
+      const lbl = months[srcId] ? months[srcId].label.slice(0,3) : srcId;
+      return `<span>${lbl}: ${val}</span>`;
+    }).filter(Boolean).join('');
+  };
+
+  const rEmp = r ? (_bdr === 'cath' ? r.companies_cath : _bdr === 'mat' ? r.companies_mat : r.companies) : null;
+  const rMsg = r ? (_bdr === 'cath' ? r.messages_cath  : _bdr === 'mat' ? r.messages_mat  : r.messages)  : null;
+  const rCon = r ? (_bdr === 'cath' ? r.contacts_cath  : _bdr === 'mat' ? r.contacts_mat  : r.contacts)  : null;
+
+  const attioTotal = getAttioMql(_bdr, _month);
+  const attioCath  = getAttioMql('cath', _month);
+  const attioMat   = getAttioMql('mat',  _month);
+  const hasAttio   = attioTotal !== null;
+  const mqlDisplay = hasAttio ? attioTotal : mql;
+  const mqlCath    = hasAttio ? attioCath  : getVal(t.mqls, 'cath', _month, _sprint);
+  const mqlMat     = hasAttio ? attioMat   : getVal(t.mqls, 'mat',  _month, _sprint);
+
+  const group = (label, extra, cards) => `
+    <div class="kpi-group">
+      <div class="kpi-group-header">
+        <span class="kpi-group-label">${label}</span>${extra || ''}
       </div>
-    </div>
-    <div class="kpi-card" onclick="openModal('contatos')">
-      <div class="kpi-label">Contatos</div>
-      <div class="kpi-value">${con}</div>
-      <div class="kpi-sub">
-        <span><span class="dot-cath"></span>${t.contatos.cath} Cath</span>
-        <span><span class="dot-mat"></span>${t.contatos.mat} Mat</span>
-      </div>
-    </div>
-    <div class="kpi-card" onclick="openModal('ce')">
-      <div class="kpi-label">Contatos / Empresa</div>
-      <div class="kpi-value">${ce}</div>
-      <div class="kpi-sub"><span>por empresa única</span></div>
-    </div>
-    <div class="kpi-card" onclick="openModal('msgs')">
-      <div class="kpi-label">Mensagens Enviadas</div>
-      <div class="kpi-value">${msg}</div>
-      <div class="kpi-sub">
-        <span><span class="dot-cath"></span>${getVal(t.mensagens,'cath',_month,_sprint)} Cath</span>
-        <span><span class="dot-mat"></span>${getVal(t.mensagens,'mat',_month,_sprint)} Mat</span>
-      </div>
-    </div>
-    ${(() => {
-      const attioTotal = getAttioMql(_bdr, _month);
-      const attioCath  = getAttioMql('cath', _month);
-      const attioMat   = getAttioMql('mat',  _month);
-      const hasAttio   = attioTotal !== null;
-      const displayVal = hasAttio ? attioTotal : mql;
-      const subCath    = hasAttio ? attioCath  : getVal(t.mqls,'cath',_month,_sprint);
-      const subMat     = hasAttio ? attioMat   : getVal(t.mqls,'mat',_month,_sprint);
-      const labelSuffix = hasAttio
-        ? ' <span style="font-size:10px;font-weight:600;letter-spacing:0.06em;color:var(--accent-dark);background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:4px;vertical-align:middle">CRM</span>'
-        : '';
-      return `
-      <div class="kpi-card accent" onclick="openModal('mqls')">
-        <div class="kpi-label">MQLs${labelSuffix}</div>
-        <div class="kpi-value red">${displayVal} <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${getMqlTarget()}</span></div>
-        <div class="kpi-sub">
-          <span><span class="dot-cath"></span>${subCath} Cath</span>
-          <span><span class="dot-mat"></span>${subMat} Mat</span>
-        </div>
-      </div>`;
-    })()}
-    <div class="kpi-card" onclick="openModal('conv')">
-      <div class="kpi-label">Conversão (empresa)</div>
-      <div class="kpi-value ${convRate >= 0.1 ? 'green' : ''}">${pct(convRate)}</div>
-      <div class="kpi-sub">
-        <span>${mql > 0 && msg > 0 ? (msg/mql).toFixed(1) + ' msgs/MQL' : '—'}</span>
-      </div>
-    </div>
-  `;
+      <div class="kpi-group-cards">${cards}</div>
+    </div>`;
+
+  const card = (cls, modal, label, value, sub, extra='') => `
+    <div class="kpi-card${cls ? ' '+cls : ''}"${modal ? ` onclick="openModal('${modal}')"` : ''}>
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value">${value}</div>
+      <div class="kpi-sub">${sub}</div>
+      ${extra}
+    </div>`;
+
+  const bdrSub = (cath, mat) =>
+    `<span><span class="dot-cath"></span>${cath} Cath</span><span><span class="dot-mat"></span>${mat} Mat</span>`;
+
+  document.getElementById('kpi-groups').innerHTML = [
+
+    // ── EMPRESAS ──
+    group('Empresas', '', [
+      r ? card('kpi-card--cross', null,
+        `Alcançadas em ${monthLabel}`, rEmp,
+        bdrSub(r.companies_cath, r.companies_mat),
+        `<div class="kpi-sub kpi-src">${srcBreak('companies')}</div>`) : '',
+
+      card('', 'empresas',
+        `Listas de ${monthLabel}`, emp,
+        bdrSub(t.empresas.cath, t.empresas.mat))
+    ].join('')),
+
+    // ── CONTATOS ──
+    group('Contatos', '', [
+      r && r.contacts != null ? card('kpi-card--cross', null,
+        `Abordados em ${monthLabel}`, rCon,
+        bdrSub(r.contacts_cath, r.contacts_mat),
+        `<div class="kpi-sub kpi-src">${srcBreak('contacts')}</div>`) : '',
+
+      card('', 'contatos',
+        `Listas de ${monthLabel}`, con,
+        bdrSub(t.contatos.cath, t.contatos.mat)),
+
+      card('', 'ce',
+        'Contatos / Empresa', ce,
+        `<span>por empresa única</span>`)
+    ].join('')),
+
+    // ── MENSAGENS ──
+    group('Mensagens', '', [
+      r ? card('kpi-card--cross', null,
+        `Enviadas em ${monthLabel}`, rMsg,
+        bdrSub(r.messages_cath, r.messages_mat),
+        `<div class="kpi-sub kpi-src">${srcBreak('messages')}</div>`) : '',
+
+      card('', 'msgs',
+        `Listas de ${monthLabel}`, msg,
+        bdrSub(getVal(t.mensagens,'cath',_month,_sprint), getVal(t.mensagens,'mat',_month,_sprint)))
+    ].join('')),
+
+    // ── MQLs ──
+    group('MQLs · Resultados',
+      `<span style="font-size:10px;font-weight:500;color:var(--muted);margin-left:2px">via Attio CRM</span>`,
+      [
+        card('accent', 'mqls',
+          `MQLs${hasAttio ? ' <span style="font-size:9px;font-weight:700;letter-spacing:0.07em;color:var(--accent-dark);background:#ffd6da;padding:1px 5px;border-radius:3px">CRM</span>' : ''}`,
+          `<span class="red">${mqlDisplay}</span> <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${getMqlTarget()}</span>`,
+          bdrSub(mqlCath, mqlMat)),
+
+        card('', 'conv',
+          'Tx de Conversão',
+          `<span class="${convRate >= 0.1 ? 'green' : ''}">${pct(convRate)}</span>`,
+          `<span>${mql > 0 && msg > 0 ? (msg/mql).toFixed(1)+' msgs/MQL' : '—'}</span>`)
+      ].join(''))
+
+  ].join('');
 }
 
 function renderTable() {
