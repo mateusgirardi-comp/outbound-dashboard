@@ -630,9 +630,10 @@ function getAttioCompanyLinks(sheetCompanyNames) {
 
   sheetCompanyNames = sheetCompanyNames || [];
 
-  // Dois mapas: exact (lowercase) e normalized
+  // Três mapas: exact, normalized e compact (sem espaços — para "ApexBrasil" → "apex brasil")
   var exactMap      = {}; // name.toLowerCase() → record_id
   var normalizedMap = {}; // normalizeCompanyName(name) → record_id
+  var compactMap    = {}; // normalizeCompanyName(name).replace(/\s/g,'') → record_id
   var offset = 0;
   var hasMore = true;
 
@@ -657,6 +658,8 @@ function getAttioCompanyLinks(sheetCompanyNames) {
       exactMap[name.toLowerCase()] = id;
       var norm = normalizeCompanyName(name);
       if (norm && !normalizedMap[norm]) normalizedMap[norm] = id;
+      var compact = norm.replace(/\s/g, '');
+      if (compact && !compactMap[compact]) compactMap[compact] = id;
     }
 
     offset += records.length;
@@ -703,7 +706,7 @@ function getAttioCompanyLinks(sheetCompanyNames) {
     if (searchFallback[k] && !exactMap[k]) exactMap[k] = searchFallback[k];
   }
 
-  return { exact: exactMap, normalized: normalizedMap };
+  return { exact: exactMap, normalized: normalizedMap, compact: compactMap };
 }
 
 // ============================================================

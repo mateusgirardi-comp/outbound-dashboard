@@ -1435,6 +1435,7 @@ function renderContacts() {
   const linksData    = (_data && _data.attioCompanyLinks) || {};
   const exactMap     = linksData.exact      || {};
   const normalizedMap = linksData.normalized || {};
+  const compactMap   = linksData.compact    || {};
 
   const normalizeCompany = name => name.split(/\s*\|\s*/)[0].trim()
     .toLowerCase()
@@ -1447,8 +1448,10 @@ function renderContacts() {
   const getAttioId = empresa => {
     const lower = empresa.toLowerCase();
     const norm = normalizeCompany(empresa);
+    const compact = norm.replace(/\s/g, '');
     if (exactMap[lower]) return exactMap[lower];
     if (normalizedMap[norm]) return normalizedMap[norm];
+    if (compactMap[compact]) return compactMap[compact];
     // startsWith: "3s" matches "3s tecnologia"
     if (norm.length >= 2) {
       for (const k of _normKeys) {
