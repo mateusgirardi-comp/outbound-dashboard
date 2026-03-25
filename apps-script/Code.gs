@@ -35,6 +35,10 @@ var MONTHS_CONFIG = [
   }
 ];
 
+// Planilha de prospecção outbound
+var LEADS_SPREADSHEET_ID = '1OAGg5rDXi-uBO6SIPi3qldyyAPZvtZxuTz6XaPoFtoM';
+var LEADS_SHEET_GID      = 487542244;
+
 // Abas que NÃO são campanhas (usadas apenas para Mar / auto-detect)
 var IGNORED_SHEETS = [
   'Métricas', 'CADENCIA', 'CADENCIAS', 'MENSAGEM', 'mat_analise>',
@@ -69,6 +73,20 @@ function doGet(e) {
   if (params.clear_cache === '1') {
     CacheService.getScriptCache().remove('attio_search_fallback');
     return ContentService.createTextOutput('{"cache":"cleared"}').setMimeType(ContentService.MimeType.JSON);
+  }
+  if (params.action === 'get_leads') {
+    return ContentService
+      .createTextOutput(JSON.stringify({ leads: getLeadsData() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  if (params.action === 'update_lead') {
+    var row = parseInt(params.row, 10);
+    var col = parseInt(params.col, 10);
+    var value = params.value !== undefined ? params.value : '';
+    if (row > 0 && col > 0) updateLeadCell(row, col, value);
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
   return ContentService
     .createTextOutput(JSON.stringify(getData()))
@@ -973,4 +991,83 @@ function getDebugMsgsByMonth(targetMonthId) {
     mat_empresas:  Object.keys(matEmpresas).sort(),
     details: dedupedDetails
   };
+}
+
+// ============================================================
+// PROSPECÇÃO OUTBOUND — leitura e escrita na planilha de leads
+// ============================================================
+
+function getLeadsSheet() {
+  var ss = SpreadsheetApp.openById(LEADS_SPREADSHEET_ID);
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].getSheetId() === LEADS_SHEET_GID) return sheets[i];
+  }
+  return sheets[0];
+}
+
+function formatDateVal(val) {
+  if (!val) return '';
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return Utilities.formatDate(val, 'America/Sao_Paulo', 'yyyy-MM-dd');
+  }
+  var s = String(val).trim();
+  // se vier como número serial (Google Sheets date serial)
+  if (/^\d{5}$/.test(s)) {
+    var d = new Date((parseInt(s) - 25569) * 86400000);
+    return Utilities.formatDate(d, 'America/Sao_Paulo', 'yyyy-MM-dd');
+  }
+  return s;
+}
+
+function getLeadsData() {
+  var sheet = getLeadsSheet();
+  var data  = sheet.getDataRange().getValues();
+  var leads = [];
+  // rows 0 e 1 são cabeçalhos; dados a partir do índice 2
+  for (var i = 2; i < data.length; i++) {
+    var r = data[i];
+    if (!r[0] && !r[2]) continue; // pula linhas completamente vazias
+    leads.push({
+      row:       i + 1, // número da linha na planilha (1-based)
+      company:   String(r[0]  || ''),
+      employees: String(r[1]  || ''),
+      name:      String(r[2]  || ''),
+      title:     String(r[3]  || ''),
+      location:  String(r[4]  || ''),
+      domain:    String(r[5]  || ''),
+      linkedin:  String(r[6]  || ''),
+      phone1:    String(r[7]  || ''),
+      phone2:    String(r[8]  || ''),
+      email:     String(r[9]  || ''),
+      status:    String(r[10] || ''),
+      fups: [
+        { status: String(r[11] || ''), date: formatDateVal(r[12]), answered: String(r[13] || '') },
+        { status: String(r[14] || ''), date: formatDateVal(r[15]), answered: String(r[16] || '') },
+        { status: String(r[17] || ''), date: formatDateVal(r[18]), answered: String(r[19] || '') },
+        { status: String(r[20] || ''), date: formatDateVal(r[21]), answered: String(r[22] || '') },
+        { status: String(r[23] || ''), date: formatDateVal(r[24]), answered: String(r[25] || '') }
+      ]
+    });
+  }
+  return leads;
+}
+
+function updateLeadCell(row, col, value) {
+  var sheet = getLeadsSheet();
+  var cell  = sheet.getRange(row, col);
+  if (value === '' || value === null || value === undefined) {
+    cell.clearContent();
+    return;
+  }
+  // Colunas de data (1-based): FUP1=13, FUP2=16, FUP3=19, FUP4=22, FUP5=25
+  var dateCols = [13, 16, 19, 22, 25];
+  if (dateCols.indexOf(col) > -1) {
+    var parts = String(value).split('-');
+    if (parts.length === 3) {
+      var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      if (!isNaN(d.getTime())) { cell.setValue(d); return; }
+    }
+  }
+  cell.setValue(value);
 }

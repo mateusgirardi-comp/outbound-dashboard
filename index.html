@@ -548,6 +548,77 @@
       margin-bottom: 2px;
     }
     .modal-bk-value { font-size: 20px; font-weight: 700; }
+
+    /* ── Prospecting View ── */
+    #prospecting-view { display: none; }
+    #prospecting-view main { padding: 28px 32px; max-width: 100%; margin: 0 auto; }
+
+    .prosp-filters {
+      display: flex; gap: 10px; align-items: center;
+      flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .prosp-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--card);
+    }
+    .prosp-table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+    .prosp-table th {
+      background: var(--bg); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+      padding: 8px 10px; border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border); white-space: nowrap;
+      position: sticky; top: 0; z-index: 1;
+    }
+    .prosp-table th.fup-header {
+      text-align: center; background: #f0f0f0; color: #666;
+      font-size: 10px; letter-spacing: 0.1em;
+    }
+    .prosp-table td {
+      padding: 5px 10px; border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border); vertical-align: middle;
+    }
+    .prosp-table tr:hover td { background: #fafafa; }
+    .prosp-table tr:last-child td { border-bottom: none; }
+
+    .prosp-col-company  { width: 150px; min-width: 130px; font-weight: 600; font-size: 12px; }
+    .prosp-col-name     { width: 150px; min-width: 120px; }
+    .prosp-col-title    { width: 180px; min-width: 150px; color: var(--muted); font-size: 12px; }
+    .prosp-col-li       { width: 36px; text-align: center; border-right: 2px solid var(--border) !important; }
+    .prosp-col-status   { width: 135px; border-right: 2px solid var(--border) !important; }
+    .prosp-col-fup-status { width: 105px; }
+    .prosp-col-fup-date   { width: 108px; }
+    .prosp-col-fup-ans    { width: 62px; border-right: 2px solid var(--border) !important; }
+
+    .prosp-status-pill {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .prosp-cell-select {
+      width: 100%; border: none; background: transparent;
+      font-size: 12px; font-family: inherit; cursor: pointer;
+      color: var(--text); padding: 2px 0; outline: none;
+    }
+    .prosp-cell-select:focus { background: var(--bg); border-radius: 4px; }
+    .prosp-cell-date {
+      width: 100%; border: none; background: transparent;
+      font-size: 12px; font-family: inherit; color: var(--text);
+      padding: 2px 0; outline: none;
+    }
+    .prosp-cell-date:focus { background: var(--bg); border-radius: 4px; }
+    .prosp-loading-msg { padding: 48px; text-align: center; color: var(--muted); }
+
+    /* Toast */
+    .prosp-toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #111; color: #fff;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      z-index: 9999; opacity: 0; transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+    }
+    .prosp-toast.show  { opacity: 1; transform: translateY(0); }
+    .prosp-toast.error { background: var(--accent); }
   </style>
 </head>
 <body>
@@ -606,6 +677,9 @@
     </div>
     <div class="sidebar-nav-item" id="nav-contacts" onclick="showView('contacts')">
       <span class="nav-icon">🏢</span> Empresas prospectadas
+    </div>
+    <div class="sidebar-nav-item" id="nav-prospecting" onclick="showView('prospecting')">
+      <span class="nav-icon">🎯</span> Prospecção Outbound
     </div>
   </nav>
 </div>
@@ -735,6 +809,57 @@
   </main>
 </div>
 
+<!-- Prospecting View -->
+<div id="prospecting-view">
+  <main>
+    <div class="prosp-filters">
+      <input class="contacts-search" id="prosp-search" type="text"
+        placeholder="Buscar empresa ou nome…" oninput="renderProspecting()">
+      <select class="filter-select" id="prosp-filter-status" onchange="renderProspecting()">
+        <option value="">Todos os status</option>
+        <option>Não contactado</option>
+        <option>Em prospecção</option>
+        <option>Respondeu</option>
+        <option>MQL</option>
+        <option>Sem interesse</option>
+        <option>Sem resposta</option>
+        <option>Inativo</option>
+      </select>
+      <span class="contacts-count" id="prosp-count"></span>
+      <button class="refresh-btn" onclick="loadLeads(true)"
+        style="margin-left:auto;color:var(--accent);border-color:var(--accent)">↻ Atualizar</button>
+    </div>
+    <div id="prosp-loading-msg" class="prosp-loading-msg">Carregando leads…</div>
+    <div class="prosp-table-wrap" id="prosp-table-wrap" style="display:none">
+      <table class="prosp-table">
+        <thead>
+          <tr>
+            <th rowspan="2" class="prosp-col-company">Empresa</th>
+            <th rowspan="2" class="prosp-col-name">Contato</th>
+            <th rowspan="2" class="prosp-col-title">Cargo</th>
+            <th rowspan="2" class="prosp-col-li">LI</th>
+            <th rowspan="2" class="prosp-col-status">Status</th>
+            <th colspan="3" class="fup-header">FUP 1</th>
+            <th colspan="3" class="fup-header">FUP 2</th>
+            <th colspan="3" class="fup-header">FUP 3</th>
+            <th colspan="3" class="fup-header">FUP 4</th>
+            <th colspan="3" class="fup-header">FUP 5</th>
+          </tr>
+          <tr>
+            <th class="prosp-col-fup-status">Status</th><th class="prosp-col-fup-date">Data</th><th class="prosp-col-fup-ans">Resp?</th>
+            <th class="prosp-col-fup-status">Status</th><th class="prosp-col-fup-date">Data</th><th class="prosp-col-fup-ans">Resp?</th>
+            <th class="prosp-col-fup-status">Status</th><th class="prosp-col-fup-date">Data</th><th class="prosp-col-fup-ans">Resp?</th>
+            <th class="prosp-col-fup-status">Status</th><th class="prosp-col-fup-date">Data</th><th class="prosp-col-fup-ans">Resp?</th>
+            <th class="prosp-col-fup-status">Status</th><th class="prosp-col-fup-date">Data</th><th class="prosp-col-fup-ans">Resp?</th>
+          </tr>
+        </thead>
+        <tbody id="prosp-tbody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<div class="prosp-toast" id="prosp-toast"></div>
+
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLxGoVy1zJh3giv01cA-W66PPJ9TQXC7Dqwmn9uACJl8pE0HncbmHsJU3T48O8OdBc/exec';
 const MQL_TARGETS = { FEB: 80, MAR: 115 };
@@ -766,10 +891,11 @@ async function init() {
 }
 
 function show(id) {
-  document.getElementById('loading').style.display       = id === 'loading'     ? 'flex'  : 'none';
-  document.getElementById('error-state').style.display   = id === 'error-state' ? 'flex'  : 'none';
-  document.getElementById('dashboard').style.display     = id === 'dashboard'   ? 'block' : 'none';
-  document.getElementById('contacts-view').style.display = 'none';
+  document.getElementById('loading').style.display          = id === 'loading'     ? 'flex'  : 'none';
+  document.getElementById('error-state').style.display      = id === 'error-state' ? 'flex'  : 'none';
+  document.getElementById('dashboard').style.display        = id === 'dashboard'   ? 'block' : 'none';
+  document.getElementById('contacts-view').style.display    = 'none';
+  document.getElementById('prospecting-view').style.display = 'none';
   // header sempre visível exceto no loading/error
   document.querySelector('header').style.display = (id === 'loading' || id === 'error-state') ? 'none' : 'flex';
 }
@@ -1540,13 +1666,16 @@ function closeSidebar() {
 }
 function showView(view) {
   _view = view;
-  document.getElementById('dashboard').style.display        = view === 'dashboard' ? 'block' : 'none';
-  document.getElementById('contacts-view').style.display    = view === 'contacts'  ? 'block' : 'none';
-  document.getElementById('dashboard-controls').style.display = view === 'dashboard' ? 'flex' : 'none';
-  document.getElementById('nav-dashboard').classList.toggle('active', view === 'dashboard');
-  document.getElementById('nav-contacts').classList.toggle('active', view === 'contacts');
+  document.getElementById('dashboard').style.display          = view === 'dashboard'   ? 'block' : 'none';
+  document.getElementById('contacts-view').style.display      = view === 'contacts'    ? 'block' : 'none';
+  document.getElementById('prospecting-view').style.display   = view === 'prospecting' ? 'block' : 'none';
+  document.getElementById('dashboard-controls').style.display = view === 'dashboard'   ? 'flex'  : 'none';
+  document.getElementById('nav-dashboard').classList.toggle('active',    view === 'dashboard');
+  document.getElementById('nav-contacts').classList.toggle('active',     view === 'contacts');
+  document.getElementById('nav-prospecting').classList.toggle('active',  view === 'prospecting');
   closeSidebar();
-  if (view === 'contacts' && _data) renderContacts();
+  if (view === 'contacts'    && _data) renderContacts();
+  if (view === 'prospecting')          loadLeads();
 }
 
 // ── Contacts view ──
@@ -1687,6 +1816,163 @@ document.querySelectorAll('.col-resize-handle').forEach(handle => {
     document.addEventListener('mouseup', onUp);
   });
 });
+
+// ============================================================
+// PROSPECÇÃO OUTBOUND
+// ============================================================
+
+let _leads        = null;
+let _leadsLoading = false;
+
+const PROSP_STATUS_STYLE = {
+  'MQL':            'background:#dcfce7;color:#15803d',
+  'Respondeu':      'background:#dbeafe;color:#1d4ed8',
+  'Em prospecção':  'background:#fef9c3;color:#854d0e',
+  'Sem interesse':  'background:#f3f4f6;color:#6b7280',
+  'Sem resposta':   'background:#f3f4f6;color:#6b7280',
+  'Inativo':        'background:#f1f5f9;color:#94a3b8',
+  'Não contactado': 'background:#f8fafc;color:#94a3b8'
+};
+
+// mapeamento campo → coluna na planilha (1-based)
+const PROSP_COL = {
+  status:        11,
+  fup0_status:   12, fup0_date:   13, fup0_answered:   14,
+  fup1_status:   15, fup1_date:   16, fup1_answered:   17,
+  fup2_status:   18, fup2_date:   19, fup2_answered:   20,
+  fup3_status:   21, fup3_date:   22, fup3_answered:   23,
+  fup4_status:   24, fup4_date:   25, fup4_answered:   26
+};
+
+async function loadLeads(force = false) {
+  if (_leadsLoading) return;
+  if (_leads && !force) { renderProspecting(); return; }
+  _leadsLoading = true;
+  const loadMsg = document.getElementById('prosp-loading-msg');
+  const wrap    = document.getElementById('prosp-table-wrap');
+  loadMsg.textContent = 'Carregando leads…';
+  loadMsg.style.display = 'block';
+  wrap.style.display    = 'none';
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=get_leads&t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    _leads = data.leads;
+    renderProspecting();
+  } catch (e) {
+    loadMsg.textContent = 'Erro ao carregar leads: ' + e.message;
+  } finally {
+    _leadsLoading = false;
+  }
+}
+
+function renderProspecting() {
+  if (!_leads) { loadLeads(); return; }
+
+  const search       = (document.getElementById('prosp-search').value || '').toLowerCase();
+  const filterStatus = document.getElementById('prosp-filter-status').value;
+
+  const filtered = _leads.filter(l => {
+    if (filterStatus && l.status !== filterStatus) return false;
+    if (search) {
+      const hay = (l.company + ' ' + l.name + ' ' + l.title).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('prosp-count').textContent = `${filtered.length} de ${_leads.length} leads`;
+  document.getElementById('prosp-loading-msg').style.display = 'none';
+  document.getElementById('prosp-table-wrap').style.display  = 'block';
+
+  const escHtml = s => String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  const opts = (arr, val) => arr
+    .map(o => `<option value="${escHtml(o)}"${o === val ? ' selected' : ''}>${o || '—'}</option>`)
+    .join('');
+
+  const STATUS_OPTS = ['', 'Não contactado', 'Em prospecção', 'Respondeu', 'MQL', 'Sem interesse', 'Sem resposta', 'Inativo'];
+  const FUP_OPTS    = ['', 'Enviado', 'Agendado', 'Não enviado'];
+  const ANS_OPTS    = ['', 'Sim', 'Não'];
+
+  document.getElementById('prosp-tbody').innerHTML = filtered.map(l => {
+    const statusStyle = PROSP_STATUS_STYLE[l.status] || 'background:#f3f4f6;color:#6b7280';
+    const statusPill  = l.status
+      ? `<span class="prosp-status-pill" style="${statusStyle}">${escHtml(l.status)}</span>`
+      : `<select class="prosp-cell-select" data-field="status" onchange="saveLeadCell(this)">${opts(STATUS_OPTS, l.status)}</select>`;
+
+    return `<tr data-row="${l.row}">
+      <td class="prosp-col-company">${escHtml(l.company)}</td>
+      <td class="prosp-col-name">${escHtml(l.name)}</td>
+      <td class="prosp-col-title">${escHtml(l.title)}</td>
+      <td class="prosp-col-li">${l.linkedin
+        ? `<a href="${escHtml(l.linkedin)}" target="_blank" style="color:var(--accent);font-size:15px;text-decoration:none" title="LinkedIn">↗</a>`
+        : ''}</td>
+      <td class="prosp-col-status">
+        <select class="prosp-cell-select" data-field="status" onchange="saveLeadCell(this)">
+          ${opts(STATUS_OPTS, l.status)}
+        </select>
+      </td>
+      ${l.fups.map((f, i) => `
+        <td class="prosp-col-fup-status">
+          <select class="prosp-cell-select" data-field="fup${i}_status" onchange="saveLeadCell(this)">
+            ${opts(FUP_OPTS, f.status)}
+          </select>
+        </td>
+        <td class="prosp-col-fup-date">
+          <input class="prosp-cell-date" type="date" data-field="fup${i}_date"
+            value="${escHtml(f.date)}" onchange="saveLeadCell(this)">
+        </td>
+        <td class="prosp-col-fup-ans">
+          <select class="prosp-cell-select" data-field="fup${i}_answered" onchange="saveLeadCell(this)">
+            ${opts(ANS_OPTS, f.answered)}
+          </select>
+        </td>
+      `).join('')}
+    </tr>`;
+  }).join('');
+}
+
+async function saveLeadCell(el) {
+  const row   = parseInt(el.closest('tr').dataset.row, 10);
+  const field = el.dataset.field;
+  const value = el.value;
+  const col   = PROSP_COL[field];
+  if (!col) return;
+
+  // Atualiza cache local imediatamente
+  const lead = _leads.find(l => l.row === row);
+  if (lead) {
+    if (field === 'status') {
+      lead.status = value;
+    } else {
+      const m = field.match(/^fup(\d)_(.+)$/);
+      if (m) {
+        const fupIdx  = parseInt(m[1]);
+        const subField = m[2]; // 'status' | 'date' | 'answered'
+        lead.fups[fupIdx][subField] = value;
+      }
+    }
+  }
+
+  try {
+    const url = `${APPS_SCRIPT_URL}?action=update_lead&row=${row}&col=${col}&value=${encodeURIComponent(value)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    showProspToast('Salvo ✓');
+  } catch (e) {
+    showProspToast('Erro ao salvar', true);
+  }
+}
+
+function showProspToast(msg, error = false) {
+  const t = document.getElementById('prosp-toast');
+  t.textContent = msg;
+  t.className = 'prosp-toast show' + (error ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = 'prosp-toast'; }, 1800);
+}
 
 init();
 </script>
