@@ -140,23 +140,29 @@
     /* ── Main layout ── */
     main { padding: 28px 32px; max-width: 1440px; margin: 0 auto; }
 
-    /* ── KPI Groups ── */
-    .kpi-groups { display: flex; flex-direction: column; gap: 18px; margin-bottom: 28px; }
-    .kpi-group-header {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
-    }
-    .kpi-group-label {
-      font-size: 10px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--muted); white-space: nowrap;
-    }
-    .kpi-group-header::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
-    }
-    .kpi-group-cards { display: flex; gap: 12px; flex-wrap: wrap; }
-    .kpi-group-cards .kpi-card { flex: 1; min-width: 150px; }
+    /* ── KPI Rows ── */
+    .kpi-rows { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+    .kpi-row { display: flex; gap: 12px; }
+    .kpi-row .kpi-card { flex: 1; min-width: 130px; }
     .kpi-card--cross { border-top: 3px solid var(--green) !important; }
     .kpi-card--cross::before { display: none; }
     .kpi-src { gap: 10px; margin-top: 4px; color: var(--muted); font-size: 11px; }
+
+    /* ── MQL Deal List ── */
+    .modal-box--wide { max-width: 680px !important; }
+    .mql-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 13px; }
+    .mql-table th { text-align: left; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--muted); font-weight: 600;
+      padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    .mql-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .mql-table tr:last-child td { border-bottom: none; }
+    .mql-table tr:hover td { background: #fafafa; }
+    .stage-pill { display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 600; }
+    .stage-mql  { background: var(--accent-light); color: var(--accent); }
+    .stage-sal  { background: var(--green-light); color: var(--green); }
+    .stage-lost { background: #f3f4f6; color: var(--muted); }
+    .stage-other { background: var(--yellow-light); color: var(--yellow); }
 
     .kpi-card {
       background: var(--card);
@@ -551,7 +557,7 @@
 
 <!-- KPI Modal -->
 <div class="modal-overlay" id="kpi-modal" onclick="closeModal(event)">
-  <div class="modal-box">
+  <div class="modal-box" id="kpi-modal-box">
     <button class="modal-close" onclick="closeModalDirect()">✕</button>
     <div class="modal-kpi-label" id="modal-label"></div>
     <div class="modal-kpi-value" id="modal-value"></div>
@@ -632,8 +638,8 @@
 
   <main>
 
-    <!-- KPI Groups -->
-    <div class="kpi-groups" id="kpi-groups"></div>
+    <!-- KPI Rows -->
+    <div class="kpi-rows" id="kpi-groups"></div>
 
     <!-- Campaign Table -->
     <div class="section-header">
@@ -955,7 +961,7 @@ function renderKPIs() {
     </div>`;
 
   const card = (cls, modal, label, value, sub, extra='') => `
-    <div class="kpi-card${cls ? ' '+cls : ''}"${modal ? ` onclick="openModal('${modal}')"` : ''}>
+    <div class="kpi-card${cls ? ' '+cls : ''}"${modal ? ` onclick="openModal('${modal}')"` : ''}${!modal ? ' style="cursor:default"' : ''}>
       <div class="kpi-label">${label}</div>
       <div class="kpi-value">${value}</div>
       <div class="kpi-sub">${sub}</div>
@@ -965,64 +971,54 @@ function renderKPIs() {
   const bdrSub = (cath, mat) =>
     `<span><span class="dot-cath"></span>${cath} Cath</span><span><span class="dot-mat"></span>${mat} Mat</span>`;
 
-  document.getElementById('kpi-groups').innerHTML = [
+  const row1 = [
+    r ? card('kpi-card--cross', 'empresas_cross',
+      `Empresas em ${monthLabel}`, rEmp,
+      bdrSub(r.companies_cath, r.companies_mat),
+      `<div class="kpi-sub kpi-src">${srcBreak('companies')}</div>`) : '',
 
-    // ── EMPRESAS ──
-    group('Empresas', '', [
-      r ? card('kpi-card--cross', null,
-        `Alcançadas em ${monthLabel}`, rEmp,
-        bdrSub(r.companies_cath, r.companies_mat),
-        `<div class="kpi-sub kpi-src">${srcBreak('companies')}</div>`) : '',
+    card('', 'empresas',
+      `Empresas · listas ${monthLabel}`, emp,
+      bdrSub(t.empresas.cath, t.empresas.mat)),
 
-      card('', 'empresas',
-        `Listas de ${monthLabel}`, emp,
-        bdrSub(t.empresas.cath, t.empresas.mat))
-    ].join('')),
+    r && r.contacts != null ? card('kpi-card--cross', 'contatos_cross',
+      `Contatos em ${monthLabel}`, rCon,
+      bdrSub(r.contacts_cath, r.contacts_mat),
+      `<div class="kpi-sub kpi-src">${srcBreak('contacts')}</div>`) : '',
 
-    // ── CONTATOS ──
-    group('Contatos', '', [
-      r && r.contacts != null ? card('kpi-card--cross', null,
-        `Abordados em ${monthLabel}`, rCon,
-        bdrSub(r.contacts_cath, r.contacts_mat),
-        `<div class="kpi-sub kpi-src">${srcBreak('contacts')}</div>`) : '',
+    card('', 'contatos',
+      `Contatos · listas ${monthLabel}`, con,
+      bdrSub(t.contatos.cath, t.contatos.mat)),
 
-      card('', 'contatos',
-        `Listas de ${monthLabel}`, con,
-        bdrSub(t.contatos.cath, t.contatos.mat)),
+    card('', 'ce',
+      'Contatos / Empresa', ce,
+      `<span>por empresa única</span>`)
+  ].filter(Boolean).join('');
 
-      card('', 'ce',
-        'Contatos / Empresa', ce,
-        `<span>por empresa única</span>`)
-    ].join('')),
+  const row2 = [
+    r ? card('kpi-card--cross', 'msgs_cross',
+      `Mensagens em ${monthLabel}`, rMsg,
+      bdrSub(r.messages_cath, r.messages_mat),
+      `<div class="kpi-sub kpi-src">${srcBreak('messages')}</div>`) : '',
 
-    // ── MENSAGENS ──
-    group('Mensagens', '', [
-      r ? card('kpi-card--cross', null,
-        `Enviadas em ${monthLabel}`, rMsg,
-        bdrSub(r.messages_cath, r.messages_mat),
-        `<div class="kpi-sub kpi-src">${srcBreak('messages')}</div>`) : '',
+    card('', 'msgs',
+      `Mensagens · listas ${monthLabel}`, msg,
+      bdrSub(getVal(t.mensagens,'cath',_month,_sprint), getVal(t.mensagens,'mat',_month,_sprint))),
 
-      card('', 'msgs',
-        `Listas de ${monthLabel}`, msg,
-        bdrSub(getVal(t.mensagens,'cath',_month,_sprint), getVal(t.mensagens,'mat',_month,_sprint)))
-    ].join('')),
+    card('accent', 'mqls',
+      `MQLs${hasAttio ? ' <span style="font-size:9px;font-weight:700;letter-spacing:0.07em;color:var(--accent-dark);background:#ffd6da;padding:1px 5px;border-radius:3px">CRM</span>' : ''}`,
+      `<span class="red">${mqlDisplay}</span> <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${getMqlTarget()}</span>`,
+      bdrSub(mqlCath, mqlMat)),
 
-    // ── MQLs ──
-    group('MQLs · Resultados',
-      `<span style="font-size:10px;font-weight:500;color:var(--muted);margin-left:2px">via Attio CRM</span>`,
-      [
-        card('accent', 'mqls',
-          `MQLs${hasAttio ? ' <span style="font-size:9px;font-weight:700;letter-spacing:0.07em;color:var(--accent-dark);background:#ffd6da;padding:1px 5px;border-radius:3px">CRM</span>' : ''}`,
-          `<span class="red">${mqlDisplay}</span> <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${getMqlTarget()}</span>`,
-          bdrSub(mqlCath, mqlMat)),
+    card('', 'conv',
+      'Tx de Conversão',
+      `<span class="${convRate >= 0.1 ? 'green' : ''}">${pct(convRate)}</span>`,
+      `<span>${mql > 0 && msg > 0 ? (msg/mql).toFixed(1)+' msgs/MQL' : '—'}</span>`)
+  ].filter(Boolean).join('');
 
-        card('', 'conv',
-          'Tx de Conversão',
-          `<span class="${convRate >= 0.1 ? 'green' : ''}">${pct(convRate)}</span>`,
-          `<span>${mql > 0 && msg > 0 ? (msg/mql).toFixed(1)+' msgs/MQL' : '—'}</span>`)
-      ].join(''))
-
-  ].join('');
+  document.getElementById('kpi-groups').innerHTML = `
+    <div class="kpi-row">${row1}</div>
+    <div class="kpi-row">${row2}</div>`;
 }
 
 function renderTable() {
@@ -1321,7 +1317,51 @@ function openModal(kpi) {
   const ce  = emp > 0 ? (con / emp).toFixed(2) : '—';
   const convRate = emp > 0 ? mql / emp : 0;
 
+  const r = (_month !== 'all' && _data.reach && _data.reach[_month]) ? _data.reach[_month] : null;
+  const months = _data.months || {};
+  const monthLabel = months[_month] ? months[_month].label : _month;
+
+  const srcBreakText = (field) => {
+    if (!r || !r.by_source) return '';
+    return Object.keys(r.by_source).map(srcId => {
+      const val = r.by_source[srcId][field];
+      if (!val) return '';
+      const lbl = months[srcId] ? months[srcId].label.slice(0,3) : srcId;
+      return `${lbl}: ${val}`;
+    }).filter(Boolean).join(' · ');
+  };
+
   const defs = {
+    empresas_cross: r ? {
+      label: `Empresas Alcançadas em ${monthLabel}`,
+      value: r.companies,
+      desc: `Total de empresas únicas que receberam pelo menos 1 mensagem durante ${monthLabel}, consolidando todas as campanhas ativas. Inclui follow-ups de campanhas de meses anteriores.`,
+      formula: `Por mês de origem: ${srcBreakText('companies') || '—'}`,
+      breakdown: [
+        { label: 'Cath', value: r.companies_cath },
+        { label: 'Mat',  value: r.companies_mat  }
+      ]
+    } : null,
+    contatos_cross: r && r.contacts != null ? {
+      label: `Contatos Abordados em ${monthLabel}`,
+      value: r.contacts,
+      desc: `Total de contatos únicos (pessoa + empresa) que receberam pelo menos 1 mensagem durante ${monthLabel}. Conta cada par nome+empresa uma única vez, mesmo que haja múltiplos envios.`,
+      formula: `Por mês de origem: ${srcBreakText('contacts') || '—'}`,
+      breakdown: [
+        { label: 'Cath', value: r.contacts_cath },
+        { label: 'Mat',  value: r.contacts_mat  }
+      ]
+    } : null,
+    msgs_cross: r ? {
+      label: `Mensagens Enviadas em ${monthLabel}`,
+      value: r.messages,
+      desc: `Total de mensagens enviadas durante ${monthLabel}, incluindo follow-ups de campanhas iniciadas em meses anteriores. Cada coluna "Data Envio" preenchida conta como 1 mensagem.`,
+      formula: `Por mês de origem: ${srcBreakText('messages') || '—'}`,
+      breakdown: [
+        { label: 'Cath', value: r.messages_cath },
+        { label: 'Mat',  value: r.messages_mat  }
+      ]
+    } : null,
     empresas: {
       label: 'Empresas Únicas',
       value: emp,
@@ -1375,21 +1415,50 @@ function openModal(kpi) {
       const attioCath = getAttioMql('cath', _month) ?? '—';
       const attioMat  = getAttioMql('mat',  _month) ?? '—';
       const target = getMqlTarget();
+
+      // Build deal list table
+      let listHtml = '';
+      if (hasAttio && _data.attioMqls && _data.attioMqls.list) {
+        const deals = _data.attioMqls.list.filter(d =>
+          (_month === 'all' || d.monthId === _month) &&
+          (_bdr === 'total' || (_bdr === 'cath' && d.bdr === 'Cath') || (_bdr === 'mat' && d.bdr === 'Mateus Girardi'))
+        );
+        const stageClass = s => {
+          const sl = (s||'').toLowerCase();
+          if (sl === 'mql') return 'stage-mql';
+          if (sl.includes('sal') || sl.includes('oportunidade')) return 'stage-sal';
+          if (sl === 'lost') return 'stage-lost';
+          return 'stage-other';
+        };
+        listHtml = `<div style="margin-top:16px;max-height:280px;overflow-y:auto;">
+          <table class="mql-table">
+            <thead><tr><th>Empresa</th><th>Data MQL</th><th>BDR</th><th>Stage atual</th></tr></thead>
+            <tbody>${deals.map(d => `<tr>
+              <td style="font-weight:500">${d.name}</td>
+              <td style="color:var(--muted)">${d.date_mql}</td>
+              <td style="color:var(--muted)">${d.bdr === 'Mateus Girardi' ? 'Mat' : d.bdr}</td>
+              <td><span class="stage-pill ${stageClass(d.stage)}">${d.stage}</span></td>
+            </tr>`).join('')}</tbody>
+          </table></div>`;
+      }
+
       return {
         label: hasAttio ? 'MQLs (CRM · Attio)' : 'MQLs',
         value: `${displayVal} / ${target}`,
+        wide: true,
         desc: hasAttio
-          ? `MQLs registrados no Attio CRM — deals com deal_source Outbound ou LinkedIn Ads e campo date_mql preenchido. Meta do mês: ${target}. Progresso: ${target > 0 ? ((displayVal/target)*100).toFixed(0) : 0}%.`
+          ? `MQLs registrados no Attio CRM — deals com deal_source Outbound e campo date_mql preenchido. Meta do mês: ${target}. Progresso: ${target > 0 ? ((displayVal/target)*100).toFixed(0) : 0}%.`
           : `Lead qualificado pelo marketing. Meta do mês: ${target}. Progresso: ${target > 0 ? ((mql/target)*100).toFixed(0) : 0}%.`,
         formula: hasAttio
-          ? 'Attio: deals onde deal_source ∈ {Outbound, LinkedIn Ads} e date_mql está no mês selecionado'
+          ? 'Attio: deals onde deal_source = Outbound e date_mql está no mês selecionado'
           : 'COUNT(linhas onde Status Geral = "MQL")',
         breakdown: [
           { label: 'Cath',   value: hasAttio ? attioCath : getVal(t.mqls,'cath',_month,_sprint) },
           { label: 'Mat',    value: hasAttio ? attioMat  : getVal(t.mqls,'mat',_month,_sprint) },
           { label: 'Meta',   value: target },
           { label: 'Faltam', value: Math.max(0, target - displayVal) }
-        ]
+        ],
+        listHtml
       };
     })(),
     conv: {
@@ -1422,11 +1491,14 @@ function openModal(kpi) {
       <div class="modal-bk-item">
         <div class="modal-bk-label">${b.label}</div>
         <div class="modal-bk-value">${b.value}</div>
-      </div>`).join('');
+      </div>`).join('') + (d.listHtml || '');
   } else {
-    bkTitle.style.display = 'none';
-    bkEl.innerHTML = '';
+    bkTitle.style.display = d.listHtml ? 'block' : 'none';
+    bkEl.innerHTML = d.listHtml || '';
   }
+
+  const box = document.getElementById('kpi-modal-box');
+  box.classList.toggle('modal-box--wide', !!d.wide);
 
   document.getElementById('kpi-modal').classList.add('open');
   document.addEventListener('keydown', onModalEsc);

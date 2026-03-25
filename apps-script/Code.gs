@@ -758,6 +758,7 @@ function getAttioMqls() {
 
   var result = { all: { total: 0, cath: 0, mat: 0 } };
   MONTHS_CONFIG.forEach(function(m) { result[m.id] = { total: 0, cath: 0, mat: 0 }; });
+  var list = [];
 
   var offset = 0;
   var hasMore = true;
@@ -807,12 +808,21 @@ function getAttioMqls() {
         result[monthId].total++;
         if (bdrKey) result[monthId][bdrKey]++;
       }
+
+      // Deal name, stage, date_mql for list
+      var dealName = (vals.name && vals.name[0]) ? String(vals.name[0].value) : '—';
+      var stageArr = vals.stage || [];
+      var stage = (stageArr[0] && stageArr[0].status) ? stageArr[0].status.title : '—';
+      var dateMql = String(dateMqlArr[0].value).slice(0, 10);
+      list.push({ name: dealName, date_mql: dateMql, stage: stage, bdr: bdrName, monthId: monthId || '' });
     }
 
     offset += records.length;
     if (records.length < 500) hasMore = false;
   }
 
+  list.sort(function(a, b) { return a.date_mql < b.date_mql ? 1 : -1; }); // mais recente primeiro
+  result.list = list;
   return result;
 }
 
