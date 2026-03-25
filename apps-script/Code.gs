@@ -564,10 +564,13 @@ function getAttioMqls() {
       var source = (srcArr[0] && srcArr[0].option) ? srcArr[0].option.title : null;
       if (ATTIO_OUTBOUND_SOURCES.indexOf(source) === -1) continue;
 
-      // Must have date_mql
+      // Must have date_mql (confirma que é um MQL)
       var dateMqlArr = vals.date_mql || [];
       if (!dateMqlArr[0] || !dateMqlArr[0].value) continue;
-      var prefix = String(dateMqlArr[0].value).slice(0, 7); // "2026-03"
+
+      // Agrupar por created_at do deal
+      var prefix = String(records[i].created_at || '').slice(0, 7); // "2026-03"
+      if (!prefix) continue;
 
       // BDR
       var bdrArr = vals.bdr_associated || [];
