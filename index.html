@@ -817,13 +817,13 @@
         placeholder="Buscar empresa ou nome…" oninput="renderProspecting()">
       <select class="filter-select" id="prosp-filter-status" onchange="renderProspecting()">
         <option value="">Todos os status</option>
-        <option>Não contactado</option>
-        <option>Em prospecção</option>
-        <option>Respondeu</option>
         <option>MQL</option>
-        <option>Sem interesse</option>
-        <option>Sem resposta</option>
-        <option>Inativo</option>
+        <option>NO INTEREST</option>
+        <option>HOLD</option>
+        <option>WAITING</option>
+        <option>WRONG PERSON</option>
+        <option>NO ANSWER</option>
+        <option>ISSUE NUMBER</option>
       </select>
       <span class="contacts-count" id="prosp-count"></span>
       <button class="refresh-btn" onclick="loadLeads(true)"
@@ -1826,13 +1826,19 @@ let _leadsOpts    = null;
 let _leadsLoading = false;
 
 const PROSP_STATUS_STYLE = {
-  'MQL':            'background:#dcfce7;color:#15803d',
-  'Respondeu':      'background:#dbeafe;color:#1d4ed8',
-  'Em prospecção':  'background:#fef9c3;color:#854d0e',
-  'Sem interesse':  'background:#f3f4f6;color:#6b7280',
-  'Sem resposta':   'background:#f3f4f6;color:#6b7280',
-  'Inativo':        'background:#f1f5f9;color:#94a3b8',
-  'Não contactado': 'background:#f8fafc;color:#94a3b8'
+  'MQL':          'background:#dcfce7;color:#15803d',
+  'NO INTEREST':  'background:#fee2e2;color:#b91c1c',
+  'HOLD':         'background:#fef9c3;color:#854d0e',
+  'WAITING':      'background:#fef3c7;color:#92400e',
+  'WRONG PERSON': 'background:#f3f4f6;color:#6b7280',
+  'NO ANSWER':    'background:#ffedd5;color:#c2410c',
+  'ISSUE NUMBER': 'background:#fce7f3;color:#9d174d',
+};
+
+const PROSP_FUP_STYLE = {
+  'ANSWERED':     'background:#dcfce7;color:#15803d',
+  'NO ANSWER':    'background:#fee2e2;color:#b91c1c',
+  'WRONG NUMBER': 'background:#f3f4f6;color:#6b7280',
 };
 
 // mapeamento campo → coluna na planilha (1-based)
@@ -1868,6 +1874,33 @@ async function loadLeads(force = false) {
   }
 }
 
+function pillBg(styleMap, val) {
+  if (!val || !styleMap[val]) return '';
+  const bg = styleMap[val].match(/background:([^;]+)/);
+  return bg ? `background:${bg[1].trim()}` : '';
+}
+function pillSelectStyle(styleMap, val) {
+  if (!val || !styleMap[val]) return 'font-weight:500';
+  return styleMap[val] + ';border-radius:4px;font-weight:600;font-size:11px';
+}
+function colorCell(el, styleMap) {
+  const val = el.value;
+  const td  = el.closest('td');
+  if (styleMap[val]) {
+    const bg = styleMap[val].match(/background:([^;]+)/);
+    if (bg) td.style.background = bg[1].trim();
+    Object.assign(el.style, { fontWeight:'600', fontSize:'11px', borderRadius:'4px' });
+    const styles = Object.fromEntries(styleMap[val].split(';').map(s => s.split(':').map(x => x.trim())));
+    el.style.background = styles.background || '';
+    el.style.color = styles.color || '';
+  } else {
+    td.style.background = '';
+    el.style.background = '';
+    el.style.color = '';
+    el.style.fontWeight = '500';
+  }
+}
+
 function renderProspecting() {
   if (!_leads) { loadLeads(); return; }
 
@@ -1894,10 +1927,10 @@ function renderProspecting() {
     .map(o => `<option value="${escHtml(o)}"${o === val ? ' selected' : ''}>${o || '—'}</option>`)
     .join('');
 
-  // usa opções da data validation da planilha; fallback para defaults
-  const STATUS_OPTS = ['', ...(_leadsOpts && _leadsOpts.status   && _leadsOpts.status.length   ? _leadsOpts.status   : ['Não contactado', 'Em prospecção', 'Respondeu', 'MQL', 'Sem interesse', 'Sem resposta', 'Inativo'])];
-  const FUP_OPTS    = ['', ...(_leadsOpts && _leadsOpts.fupStatus && _leadsOpts.fupStatus.length ? _leadsOpts.fupStatus : ['Enviado', 'Agendado', 'Não enviado'])];
-  const ANS_OPTS    = ['', ...(_leadsOpts && _leadsOpts.answered && _leadsOpts.answered.length  ? _leadsOpts.answered  : ['Sim', 'Não'])];
+  // opções fixas conforme data validation da planilha original
+  const STATUS_OPTS = ['', 'MQL', 'NO INTEREST', 'HOLD', 'WAITING', 'WRONG PERSON', 'NO ANSWER', 'ISSUE NUMBER'];
+  const FUP_OPTS    = ['', 'ANSWERED', 'NO ANSWER', 'WRONG NUMBER'];
+  const ANS_OPTS    = ['', 'Sim', 'Não'];
 
   document.getElementById('prosp-tbody').innerHTML = filtered.map(l => {
     const statusStyle = PROSP_STATUS_STYLE[l.status] || 'background:#f3f4f6;color:#6b7280';
@@ -1912,14 +1945,18 @@ function renderProspecting() {
       <td class="prosp-col-li">${l.linkedin
         ? `<a href="${escHtml(l.linkedin)}" target="_blank" style="color:var(--accent);font-size:15px;text-decoration:none" title="LinkedIn">↗</a>`
         : ''}</td>
-      <td class="prosp-col-status">
-        <select class="prosp-cell-select" data-field="status" onchange="saveLeadCell(this)">
+      <td class="prosp-col-status" style="${pillBg(PROSP_STATUS_STYLE, l.status)}">
+        <select class="prosp-cell-select" data-field="status"
+          onchange="saveLeadCell(this);colorCell(this,PROSP_STATUS_STYLE)"
+          style="${pillSelectStyle(PROSP_STATUS_STYLE, l.status)}">
           ${opts(STATUS_OPTS, l.status)}
         </select>
       </td>
       ${l.fups.map((f, i) => `
-        <td class="prosp-col-fup-status">
-          <select class="prosp-cell-select" data-field="fup${i}_status" onchange="saveLeadCell(this)">
+        <td class="prosp-col-fup-status" style="${pillBg(PROSP_FUP_STYLE, f.status)}">
+          <select class="prosp-cell-select" data-field="fup${i}_status"
+            onchange="saveLeadCell(this);colorCell(this,PROSP_FUP_STYLE)"
+            style="${pillSelectStyle(PROSP_FUP_STYLE, f.status)}">
             ${opts(FUP_OPTS, f.status)}
           </select>
         </td>
