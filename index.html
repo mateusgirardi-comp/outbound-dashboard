@@ -585,11 +585,18 @@
     .prosp-col-company  { width: 150px; min-width: 130px; font-weight: 600; font-size: 12px; }
     .prosp-col-name     { width: 150px; min-width: 120px; }
     .prosp-col-title    { width: 180px; min-width: 150px; color: var(--muted); font-size: 12px; }
-    .prosp-col-li       { width: 36px; text-align: center; border-right: 2px solid var(--border) !important; }
+    .prosp-col-li       { width: 36px; text-align: center; }
+    .prosp-col-phone    { width: 130px; color: var(--muted); font-size: 12px; }
+    .prosp-col-email    { width: 160px; color: var(--muted); font-size: 12px; border-right: 2px solid var(--border) !important; }
     .prosp-col-status   { width: 135px; border-right: 2px solid var(--border) !important; }
     .prosp-col-fup-status { width: 105px; }
     .prosp-col-fup-date   { width: 108px; }
     .prosp-col-fup-ans    { width: 62px; border-right: 2px solid var(--border) !important; }
+
+    .prosp-cell-select:disabled, .prosp-cell-date:disabled {
+      opacity: 0.35; cursor: not-allowed; pointer-events: none;
+    }
+    td.prosp-fup-locked { opacity: 0.35; }
 
     .prosp-status-pill {
       display: inline-block; padding: 2px 8px; border-radius: 4px;
@@ -839,6 +846,8 @@
             <th rowspan="2" class="prosp-col-name">Contato<span class="col-resize-handle"></span></th>
             <th rowspan="2" class="prosp-col-title">Cargo<span class="col-resize-handle"></span></th>
             <th rowspan="2" class="prosp-col-li">LI</th>
+            <th rowspan="2" class="prosp-col-phone">Telefone<span class="col-resize-handle"></span></th>
+            <th rowspan="2" class="prosp-col-email">Email<span class="col-resize-handle"></span></th>
             <th rowspan="2" class="prosp-col-status">Status<span class="col-resize-handle"></span></th>
             <th colspan="3" class="fup-header">FUP 1</th>
             <th colspan="3" class="fup-header">FUP 2</th>
@@ -1934,10 +1943,9 @@ function renderProspecting() {
   const ANS_OPTS    = ['', 'Sim', 'Não'];
 
   document.getElementById('prosp-tbody').innerHTML = filtered.map(l => {
-    const statusStyle = PROSP_STATUS_STYLE[l.status] || 'background:#f3f4f6;color:#6b7280';
-    const statusPill  = l.status
-      ? `<span class="prosp-status-pill" style="${statusStyle}">${escHtml(l.status)}</span>`
-      : `<select class="prosp-cell-select" data-field="status" onchange="saveLeadCell(this)">${opts(STATUS_OPTS, l.status)}</select>`;
+    const locked = !!l.status; // FUPs bloqueados se status geral preenchido
+    const fupCls = locked ? ' prosp-fup-locked' : '';
+    const dis    = locked ? ' disabled' : '';
 
     return `<tr data-row="${l.row}">
       <td class="prosp-col-company">${escHtml(l.company)}</td>
@@ -1946,6 +1954,8 @@ function renderProspecting() {
       <td class="prosp-col-li">${l.linkedin
         ? `<a href="${escHtml(l.linkedin)}" target="_blank" style="color:var(--accent);font-size:15px;text-decoration:none" title="LinkedIn">↗</a>`
         : ''}</td>
+      <td class="prosp-col-phone" title="${escHtml(l.phone1)}">${escHtml(l.phone1)}</td>
+      <td class="prosp-col-email" title="${escHtml(l.email)}">${escHtml(l.email)}</td>
       <td class="prosp-col-status" style="${pillBg(PROSP_STATUS_STYLE, l.status)}">
         <select class="prosp-cell-select" data-field="status"
           onchange="saveLeadCell(this);colorCell(this,PROSP_STATUS_STYLE)"
@@ -1954,19 +1964,19 @@ function renderProspecting() {
         </select>
       </td>
       ${l.fups.map((f, i) => `
-        <td class="prosp-col-fup-status" style="${pillBg(PROSP_FUP_STYLE, f.status)}">
+        <td class="prosp-col-fup-status${fupCls}" style="${pillBg(PROSP_FUP_STYLE, f.status)}">
           <select class="prosp-cell-select" data-field="fup${i}_status"
             onchange="saveLeadCell(this);colorCell(this,PROSP_FUP_STYLE)"
-            style="${pillSelectStyle(PROSP_FUP_STYLE, f.status)}">
+            style="${pillSelectStyle(PROSP_FUP_STYLE, f.status)}"${dis}>
             ${opts(FUP_OPTS, f.status)}
           </select>
         </td>
-        <td class="prosp-col-fup-date">
+        <td class="prosp-col-fup-date${fupCls}">
           <input class="prosp-cell-date" type="date" data-field="fup${i}_date"
-            value="${escHtml(f.date)}" onchange="saveLeadCell(this)">
+            value="${escHtml(f.date)}" onchange="saveLeadCell(this)"${dis}>
         </td>
-        <td class="prosp-col-fup-ans">
-          <select class="prosp-cell-select" data-field="fup${i}_answered" onchange="saveLeadCell(this)">
+        <td class="prosp-col-fup-ans${fupCls}">
+          <select class="prosp-cell-select" data-field="fup${i}_answered" onchange="saveLeadCell(this)"${dis}>
             ${opts(ANS_OPTS, f.answered)}
           </select>
         </td>
@@ -1976,30 +1986,48 @@ function renderProspecting() {
 }
 
 async function saveLeadCell(el) {
-  const row   = parseInt(el.closest('tr').dataset.row, 10);
+  const tr    = el.closest('tr');
+  const row   = parseInt(tr.dataset.row, 10);
   const field = el.dataset.field;
   const value = el.value;
   const col   = PROSP_COL[field];
   if (!col) return;
 
-  // Atualiza cache local imediatamente
+  // Atualiza cache local
   const lead = _leads.find(l => l.row === row);
   if (lead) {
     if (field === 'status') {
       lead.status = value;
     } else {
       const m = field.match(/^fup(\d)_(.+)$/);
-      if (m) {
-        const fupIdx  = parseInt(m[1]);
-        const subField = m[2]; // 'status' | 'date' | 'answered'
-        lead.fups[fupIdx][subField] = value;
-      }
+      if (m) lead.fups[parseInt(m[1])][m[2]] = value;
     }
   }
 
+  // ── Lógica 1: preencher data do FUP N → marca Resp? do FUP N-1 como "Não" se vazia
+  const fupDateMatch = field.match(/^fup(\d)_date$/);
+  if (fupDateMatch && value) {
+    const fupIdx = parseInt(fupDateMatch[1]);
+    if (fupIdx > 0 && lead && !lead.fups[fupIdx - 1].answered) {
+      const prevField = `fup${fupIdx - 1}_answered`;
+      const prevCol   = PROSP_COL[prevField];
+      lead.fups[fupIdx - 1].answered = 'Não';
+      const prevSel = tr.querySelector(`[data-field="${prevField}"]`);
+      if (prevSel) prevSel.value = 'Não';
+      fetch(`${APPS_SCRIPT_URL}?action=update_lead&row=${row}&col=${prevCol}&value=${encodeURIComponent('Não')}`);
+    }
+  }
+
+  // ── Lógica 2: preencher Status geral → bloqueia / desbloqueia todos os FUPs
+  if (field === 'status') {
+    tr.querySelectorAll('[data-field^="fup"]').forEach(input => {
+      input.disabled = !!value;
+      input.closest('td').classList.toggle('prosp-fup-locked', !!value);
+    });
+  }
+
   try {
-    const url = `${APPS_SCRIPT_URL}?action=update_lead&row=${row}&col=${col}&value=${encodeURIComponent(value)}`;
-    const res = await fetch(url);
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=update_lead&row=${row}&col=${col}&value=${encodeURIComponent(value)}`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     showProspToast('Salvo ✓');
   } catch (e) {
