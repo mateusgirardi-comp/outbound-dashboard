@@ -573,9 +573,10 @@ function getAttioMqls() {
       var prefix = String(records[i].created_at || '').slice(0, 7); // "2026-03"
       if (!prefix) continue;
 
-      // BDR
+      // BDR — excluir deals sem BDR
       var bdrArr = vals.bdr_associated || [];
       var bdrName = (bdrArr[0] && bdrArr[0].option) ? bdrArr[0].option.title : null;
+      if (!bdrName) continue;
       var bdrKey = bdrName === 'Cath' ? 'cath' : (bdrName === 'Mateus Girardi' ? 'mat' : null);
 
       result.all.total++;
