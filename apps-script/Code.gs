@@ -521,7 +521,7 @@ function computeAllReachStats() {
 // ATTIO INTEGRATION
 // ============================================================
 
-var ATTIO_OUTBOUND_SOURCES = ['Outbound', 'LinkedIn Ads'];
+var ATTIO_OUTBOUND_SOURCES = ['Outbound'];
 
 function getAttioMqls() {
   var apiKey = PropertiesService.getScriptProperties().getProperty('ATTIO_API_KEY');
