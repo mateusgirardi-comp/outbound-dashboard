@@ -298,6 +298,82 @@
     .bdr-metric-value { font-size: 24px; font-weight: 700; color: var(--text); }
     .bdr-metric-value.accent { color: var(--accent); }
 
+    /* ── View Toggle ── */
+    .view-toggle {
+      display: flex;
+      background: rgba(0,0,0,0.15);
+      border-radius: 8px; padding: 3px; gap: 2px;
+    }
+    .view-btn {
+      padding: 4px 14px; border-radius: 6px; border: none;
+      background: transparent; color: rgba(255,255,255,0.7); cursor: pointer;
+      font-size: 13px; font-weight: 500; transition: all 0.15s;
+      font-family: inherit;
+    }
+    .view-btn:hover { color: #fff; }
+    .view-btn.active {
+      background: #fff; color: var(--accent);
+      font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    /* ── Contacts View ── */
+    #contacts-view { display: none; }
+    #contacts-view main { padding: 28px 32px; max-width: 1440px; margin: 0 auto; }
+
+    .contacts-filters {
+      display: flex; gap: 10px; align-items: center;
+      flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .contacts-search {
+      flex: 1; min-width: 200px; max-width: 320px;
+      padding: 7px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 13px; font-family: inherit;
+      background: var(--card); color: var(--text); outline: none;
+    }
+    .contacts-search:focus { border-color: var(--accent); }
+    .filter-select {
+      padding: 7px 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 13px; font-family: inherit;
+      background: var(--card); color: var(--text); outline: none; cursor: pointer;
+    }
+    .filter-select:focus { border-color: var(--accent); }
+    .contacts-count {
+      margin-left: auto; font-size: 12px; color: var(--muted);
+    }
+
+    .contacts-table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow-x: auto;
+      box-shadow: var(--shadow);
+    }
+    .contacts-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+    .contacts-table thead th {
+      padding: 10px 14px; text-align: left; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+      white-space: nowrap; background: var(--card); font-weight: 600;
+    }
+    .contacts-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    .contacts-table tbody tr:last-child { border-bottom: none; }
+    .contacts-table tbody tr:hover { background: #fafafa; }
+    .contacts-table tbody td { padding: 10px 14px; font-size: 13px; }
+
+    .company-row td {
+      padding: 7px 14px;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); background: #f7f7f7;
+      border-top: 2px solid var(--border);
+    }
+    .company-row:first-child td { border-top: none; }
+    .company-row .company-name { color: var(--text); font-size: 12px; }
+    .company-row .company-meta { font-weight: 400; margin-left: 10px; }
+
+    .status-mql    { background: var(--accent-light); color: var(--accent); }
+    .status-other  { background: #f3f4f6; color: var(--muted); }
+
     /* ── Footer ── */
     footer {
       text-align: center; padding: 24px 32px;
@@ -459,6 +535,11 @@
       <span class="header-sub" id="header-sub">Comp · 2026</span>
     </div>
     <div class="header-controls">
+      <div class="view-toggle">
+        <button class="view-btn active" data-view="dashboard">Dashboard</button>
+        <button class="view-btn" data-view="contacts">Empresas</button>
+      </div>
+      <div id="dashboard-controls" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div class="sprint-tabs" id="month-tabs">
         <button class="sprint-tab" data-month="all">Todos</button>
         <button class="sprint-tab" data-month="FEB">Fev</button>
@@ -477,6 +558,7 @@
         <button class="bdr-btn" data-bdr="mat">Mat</button>
       </div>
       <span class="last-updated" id="last-updated"></span>
+      </div><!-- end dashboard-controls -->
     </div>
   </header>
 
@@ -533,6 +615,45 @@
 
 </div>
 
+<!-- Contacts View -->
+<div id="contacts-view">
+  <main>
+    <div class="contacts-filters">
+      <input class="contacts-search" id="contacts-search" type="text" placeholder="Buscar empresa ou contato…" oninput="renderContacts()">
+      <select class="filter-select" id="filter-bdr" onchange="renderContacts()">
+        <option value="all">Todos os BDRs</option>
+        <option value="Cath">Cath</option>
+        <option value="Mat">Mat</option>
+      </select>
+      <select class="filter-select" id="filter-mes" onchange="renderContacts()">
+        <option value="all">Fev + Mar</option>
+        <option value="FEB">Fevereiro</option>
+        <option value="MAR">Março</option>
+      </select>
+      <select class="filter-select" id="filter-status" onchange="renderContacts()">
+        <option value="all">Todos os status</option>
+      </select>
+      <span class="contacts-count" id="contacts-count"></span>
+    </div>
+    <div class="contacts-table-wrap">
+      <table class="contacts-table">
+        <thead>
+          <tr>
+            <th>Contato</th>
+            <th>BDR</th>
+            <th>Lista</th>
+            <th>Mês</th>
+            <th>Msgs</th>
+            <th>Última Msg</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="contacts-tbody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfJ4LR_YCgNWTi6oHB1U9Z1NsFr0WHtj7VcDGhf0ike3TTyWOBJ9WK0cN2hiHcqPEr/exec';
 const MQL_TARGETS = { FEB: 80, MAR: 115 };
@@ -564,9 +685,10 @@ async function init() {
 }
 
 function show(id) {
-  document.getElementById('loading').style.display     = id === 'loading'     ? 'flex'  : 'none';
-  document.getElementById('error-state').style.display = id === 'error-state' ? 'flex'  : 'none';
-  document.getElementById('dashboard').style.display   = id === 'dashboard'   ? 'block' : 'none';
+  document.getElementById('loading').style.display      = id === 'loading'     ? 'flex'  : 'none';
+  document.getElementById('error-state').style.display  = id === 'error-state' ? 'flex'  : 'none';
+  document.getElementById('dashboard').style.display    = id === 'dashboard'   ? 'block' : 'none';
+  document.getElementById('contacts-view').style.display = 'none';
 }
 
 function scheduleRefresh() {
@@ -1253,6 +1375,102 @@ function closeModal(e) {
 
 function onModalEsc(e) {
   if (e.key === 'Escape') closeModalDirect();
+}
+
+// ── View switching ──
+let _view = 'dashboard';
+
+document.querySelector('.view-toggle').addEventListener('click', e => {
+  const btn = e.target.closest('.view-btn');
+  if (!btn) return;
+  _view = btn.dataset.view;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('dashboard-controls').style.display = _view === 'dashboard' ? 'flex' : 'none';
+  document.getElementById('dashboard').style.display    = _view === 'dashboard' ? 'block' : 'none';
+  document.getElementById('contacts-view').style.display = _view === 'contacts'  ? 'block' : 'none';
+  if (_view === 'contacts' && _data) renderContacts();
+});
+
+// ── Contacts view ──
+function fmtDateShort(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}`;
+}
+
+function populateStatusFilter() {
+  if (!_data || !_data.contacts) return;
+  const statuses = [...new Set(_data.contacts.map(c => c.status).filter(Boolean))].sort();
+  const sel = document.getElementById('filter-status');
+  const current = sel.value;
+  sel.innerHTML = '<option value="all">Todos os status</option>' +
+    statuses.map(s => `<option value="${s}"${s === current ? ' selected' : ''}>${s || '(vazio)'}</option>`).join('');
+}
+
+function getFilteredContacts() {
+  if (!_data || !_data.contacts) return [];
+  const search = document.getElementById('contacts-search').value.toLowerCase().trim();
+  const bdr    = document.getElementById('filter-bdr').value;
+  const mes    = document.getElementById('filter-mes').value;
+  const status = document.getElementById('filter-status').value;
+
+  return _data.contacts.filter(c => {
+    if (bdr !== 'all' && c.bdr !== bdr) return false;
+    if (mes !== 'all' && c.mes !== mes) return false;
+    if (status !== 'all' && c.status !== status) return false;
+    if (search) {
+      const hay = (c.empresa + ' ' + c.contato).toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+}
+
+function renderContacts() {
+  if (!_data || !_data.contacts) return;
+  populateStatusFilter();
+  const contacts = getFilteredContacts();
+
+  // Group by empresa
+  const groups = {};
+  contacts.forEach(c => {
+    if (!groups[c.empresa]) groups[c.empresa] = [];
+    groups[c.empresa].push(c);
+  });
+
+  const empresas = Object.keys(groups).sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
+  let html = '';
+
+  empresas.forEach(empresa => {
+    const rows = groups[empresa];
+    const lastMsg = rows.map(r => r.ultima_mensagem).filter(Boolean).sort().pop();
+    const bdrs = [...new Set(rows.map(r => r.bdr).filter(Boolean))].join(', ');
+    html += `<tr class="company-row">
+      <td colspan="7">
+        <span class="company-name">${empresa}</span>
+        <span class="company-meta">${rows.length} contato${rows.length > 1 ? 's' : ''} · ${bdrs || '—'} · última: ${fmtDateShort(lastMsg)}</span>
+      </td>
+    </tr>`;
+    rows.forEach(c => {
+      const statusClass = c.status && c.status.toUpperCase() === 'MQL' ? 'status-mql' : 'status-other';
+      const mesLabel = c.mes === 'FEB' ? 'Fev' : 'Mar';
+      html += `<tr>
+        <td>${c.contato}</td>
+        <td>${c.bdr || '—'}</td>
+        <td style="color:var(--muted);font-size:12px">${c.lista}</td>
+        <td>${mesLabel}</td>
+        <td style="text-align:center">${c.n_mensagens || '—'}</td>
+        <td>${fmtDateShort(c.ultima_mensagem)}</td>
+        <td>${c.status ? `<span class="badge ${statusClass}">${c.status}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+      </tr>`;
+    });
+  });
+
+  document.getElementById('contacts-tbody').innerHTML = html;
+  const total = contacts.length;
+  const empTotal = empresas.length;
+  document.getElementById('contacts-count').textContent = `${empTotal} empresa${empTotal !== 1 ? 's' : ''} · ${total} contato${total !== 1 ? 's' : ''}`;
 }
 
 init();

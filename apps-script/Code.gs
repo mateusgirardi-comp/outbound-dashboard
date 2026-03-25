@@ -133,13 +133,16 @@ function getData() {
   var attioMqls = null;
   try { attioMqls = getAttioMqls(); } catch(e) { attioMqls = null; }
 
+  var contacts = getContactsData();
+
   return {
     lastUpdated: new Date().toISOString(),
     months: monthsMeta,
     totals: totals,
     campaigns: campaigns,
     reach: reach,
-    attioMqls: attioMqls
+    attioMqls: attioMqls,
+    contacts: contacts
   };
 }
 
@@ -515,6 +518,89 @@ function computeAllReachStats() {
     };
   });
   return result;
+}
+
+// ============================================================
+// CONTACTS VIEW
+// ============================================================
+
+function getContactsData() {
+  var contacts = [];
+
+  for (var m = 0; m < MONTHS_CONFIG.length; m++) {
+    var monthCfg = MONTHS_CONFIG[m];
+    var ss = SpreadsheetApp.openById(monthCfg.spreadsheetId);
+    var sheets = ss.getSheets();
+
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var sheetName = sheet.getName();
+
+      if (monthCfg.allowedSheets !== null) {
+        if (monthCfg.allowedSheets.indexOf(sheetName) === -1) continue;
+      }
+
+      var allValues = sheet.getDataRange().getValues();
+      if (allValues.length < 2) continue;
+
+      var detected = detectHeaders(allValues);
+      if (!detected || !isCampaignSheet(sheetName, detected.headers)) continue;
+
+      var headers    = detected.headers;
+      var dataStart  = detected.dataStart;
+      var nomeIdx    = findColIdx(headers, COL_ALIASES.nome);
+      var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
+      var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
+      var statusIdx  = findColIdx(headers, COL_ALIASES.status);
+
+      var headersLower = headers.map(function(h) { return String(h).toLowerCase().trim(); });
+      var dataEnvioIdxs = [];
+      for (var c = 0; c < headersLower.length; c++) {
+        if (headersLower[c] === 'data envio') dataEnvioIdxs.push(c);
+      }
+
+      for (var r = dataStart; r < allValues.length; r++) {
+        var row     = allValues[r];
+        var nome    = String(row[nomeIdx]    || '').trim();
+        var empresa = String(row[empresaIdx] || '').trim();
+        if (!nome || !empresa) continue;
+
+        var bdrRaw = String(row[bdrIdx] || '').trim().toUpperCase();
+        var bdr    = bdrRaw === 'CATH' ? 'Cath' : (bdrRaw === 'MAT' ? 'Mat' : bdrRaw);
+        var status = String(statusIdx >= 0 ? row[statusIdx] : '').trim();
+
+        var nMensagens = 0;
+        var ultimaMensagem = null;
+        for (var p = 0; p < dataEnvioIdxs.length; p++) {
+          var dv = row[dataEnvioIdxs[p]];
+          if (!dv) continue;
+          var d = (dv instanceof Date) ? dv : new Date(dv);
+          if (isNaN(d.getTime())) continue;
+          nMensagens++;
+          if (!ultimaMensagem || d > ultimaMensagem) ultimaMensagem = d;
+        }
+
+        contacts.push({
+          empresa:          empresa,
+          contato:          nome,
+          bdr:              bdr,
+          status:           status,
+          lista:            sheetName,
+          mes:              monthCfg.id,
+          n_mensagens:      nMensagens,
+          ultima_mensagem:  ultimaMensagem ? ultimaMensagem.toISOString().slice(0, 10) : null
+        });
+      }
+    }
+  }
+
+  contacts.sort(function(a, b) {
+    var ea = a.empresa.toLowerCase(), eb = b.empresa.toLowerCase();
+    if (ea !== eb) return ea < eb ? -1 : 1;
+    return a.contato.toLowerCase() < b.contato.toLowerCase() ? -1 : 1;
+  });
+
+  return contacts;
 }
 
 // ============================================================
