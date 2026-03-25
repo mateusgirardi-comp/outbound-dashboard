@@ -361,6 +361,8 @@
     .company-row:first-child td { border-top: none; }
     .company-row .company-name { color: var(--text); font-size: 12px; }
     .company-row .company-meta { font-weight: 400; margin-left: 10px; }
+    a.attio-link { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border); }
+    a.attio-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
     .status-mql    { background: var(--accent-light); color: var(--accent); }
     .status-other  { background: #f3f4f6; color: var(--muted); }
@@ -1430,15 +1432,29 @@ function renderContacts() {
   const empresas = Object.keys(groups).sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
   let html = '';
 
-  const links = (_data && _data.attioCompanyLinks) || {};
+  const linksData = _data && _data.attioCompanyLinks;
+  const exactMap      = (linksData && linksData.exact)      || {};
+  const normalizedMap = (linksData && linksData.normalized) || {};
+
+  function normalizeCompany(name) {
+    return name.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo)\b/g, '')
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ').trim();
+  }
+
+  function getAttioId(empresa) {
+    return exactMap[empresa.toLowerCase()] || normalizedMap[normalizeCompany(empresa)] || null;
+  }
 
   empresas.forEach(empresa => {
     const rows = groups[empresa];
     const lastMsg = rows.map(r => r.ultima_mensagem).filter(Boolean).sort().pop();
     const bdrs = [...new Set(rows.map(r => r.bdr).filter(Boolean))].join(', ');
-    const recordId = links[empresa.toLowerCase()];
+    const recordId = getAttioId(empresa);
     const empresaLabel = recordId
-      ? `<a href="https://app.attio.com/comp-tech/company/${recordId}/overview" target="_blank" style="color:var(--text);text-decoration:none;border-bottom:1px solid var(--border)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text)'">${empresa}</a>`
+      ? `<a href="https://app.attio.com/comp-tech/company/${recordId}/overview" target="_blank" class="attio-link">${empresa}</a>`
       : empresa;
     html += `<tr class="company-row">
       <td colspan="7">

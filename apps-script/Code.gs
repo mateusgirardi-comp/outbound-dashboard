@@ -611,11 +611,23 @@ function getContactsData() {
 // ATTIO COMPANY LINKS
 // ============================================================
 
+function normalizeCompanyName(name) {
+  return String(name)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // remove acentos
+    .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo)\b/g, '')
+    .replace(/[^a-z0-9\s]/g, '')  // remove pontuação
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function getAttioCompanyLinks() {
   var apiKey = PropertiesService.getScriptProperties().getProperty('ATTIO_API_KEY');
   if (!apiKey) return null;
 
-  var links = {}; // name (lowercase) → record_id
+  // Dois mapas: exact (lowercase) e normalized
+  var exactMap      = {}; // name.toLowerCase() → record_id
+  var normalizedMap = {}; // normalizeCompanyName(name) → record_id
   var offset = 0;
   var hasMore = true;
 
@@ -638,14 +650,18 @@ function getAttioCompanyLinks() {
       var r = records[i];
       var nameArr = r.values && r.values.name ? r.values.name : [];
       var name = nameArr[0] && nameArr[0].value ? String(nameArr[0].value).trim() : null;
-      if (name) links[name.toLowerCase()] = r.id.record_id;
+      if (!name) continue;
+      var id = r.id.record_id;
+      exactMap[name.toLowerCase()] = id;
+      var norm = normalizeCompanyName(name);
+      if (norm && !normalizedMap[norm]) normalizedMap[norm] = id;
     }
 
     offset += records.length;
     if (records.length < 500) hasMore = false;
   }
 
-  return links;
+  return { exact: exactMap, normalized: normalizedMap };
 }
 
 // ============================================================
