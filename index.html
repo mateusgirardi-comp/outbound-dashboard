@@ -383,13 +383,19 @@
       overflow-x: auto;
       box-shadow: var(--shadow);
     }
-    .contacts-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+    .contacts-table { width: 100%; border-collapse: collapse; min-width: 720px; table-layout: fixed; }
     .contacts-table thead th {
       padding: 10px 14px; text-align: left; font-size: 11px;
       text-transform: uppercase; letter-spacing: 0.06em;
       color: var(--muted); border-bottom: 1px solid var(--border);
       white-space: nowrap; background: var(--card); font-weight: 600;
+      position: relative; overflow: hidden;
     }
+    .col-resize-handle {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: 5px; cursor: col-resize;
+    }
+    .col-resize-handle:hover, .col-resize-handle.dragging { background: var(--accent); opacity: 0.5; }
     .contacts-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
     .contacts-table tbody tr:last-child { border-bottom: none; }
     .contacts-table tbody tr:hover { background: #fafafa; }
@@ -693,13 +699,13 @@
       <table class="contacts-table">
         <thead>
           <tr>
-            <th style="width:180px">Contato</th>
-            <th>BDR</th>
-            <th>Lista</th>
-            <th>Mês</th>
-            <th>Msgs</th>
-            <th>Última Msg</th>
-            <th>Status</th>
+            <th style="width:180px">Contato<span class="col-resize-handle"></span></th>
+            <th style="width:80px">BDR<span class="col-resize-handle"></span></th>
+            <th>Lista<span class="col-resize-handle"></span></th>
+            <th style="width:60px">Mês<span class="col-resize-handle"></span></th>
+            <th style="width:60px">Msgs<span class="col-resize-handle"></span></th>
+            <th style="width:90px">Última Msg<span class="col-resize-handle"></span></th>
+            <th style="width:90px">Status<span class="col-resize-handle"></span></th>
           </tr>
         </thead>
         <tbody id="contacts-tbody"></tbody>
@@ -1574,6 +1580,25 @@ function renderContacts() {
   const empTotal = empresas.length;
   document.getElementById('contacts-count').textContent = `${empTotal} empresa${empTotal !== 1 ? 's' : ''} · ${total} contato${total !== 1 ? 's' : ''}`;
 }
+
+// ── Column resize ──
+document.querySelectorAll('.col-resize-handle').forEach(handle => {
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const th = handle.parentElement;
+    const startX = e.clientX;
+    const startW = th.offsetWidth;
+    handle.classList.add('dragging');
+    const onMove = e => { th.style.width = Math.max(40, startW + e.clientX - startX) + 'px'; };
+    const onUp   = () => {
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+});
 
 init();
 </script>
