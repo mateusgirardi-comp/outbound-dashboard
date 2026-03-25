@@ -66,6 +66,10 @@ function doGet(e) {
       .createTextOutput(JSON.stringify(getDebugSheets()))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  if (params.clear_cache === '1') {
+    CacheService.getScriptCache().remove('attio_search_fallback');
+    return ContentService.createTextOutput('{"cache":"cleared"}').setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService
     .createTextOutput(JSON.stringify(getData()))
     .setMimeType(ContentService.MimeType.JSON);
@@ -681,20 +685,33 @@ function getAttioCompanyLinks(sheetCompanyNames) {
 
   for (var j = 0; j < needsSearch.length; j++) {
     var sheetName = needsSearch[j];
-    var searchTerm = sheetName.split(/\s*\|\s*/)[0].trim();
-    try {
-      var sResp = UrlFetchApp.fetch('https://api.attio.com/v2/objects/companies/records/query', {
-        method: 'post',
-        headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-        payload: JSON.stringify({ filter: { name: { '$contains': searchTerm } }, limit: 1 }),
-        muteHttpExceptions: true
-      });
-      var sData = JSON.parse(sResp.getContentText());
-      var sRecords = sData.data || [];
-      searchFallback[sheetName.toLowerCase()] = sRecords.length > 0 ? sRecords[0].id.record_id : null;
-    } catch(e) {
-      searchFallback[sheetName.toLowerCase()] = null;
+    // Tentar progressivamente: nome completo → sem parênteses/sufixo → primeiras 2 palavras → primeira palavra
+    var base = sheetName.split(/\s*\|\s*/)[0].split(/\s*\(/)[0].split(/\s*-\s*/)[0].trim();
+    var words = base.split(/\s+/);
+    var terms = [base];
+    if (words.length > 2) terms.push(words.slice(0, 2).join(' '));
+    if (words.length > 1) terms.push(words[0]);
+    // Remover duplicatas e termos muito curtos
+    var seen = {};
+    terms = terms.filter(function(t) {
+      if (t.length < 2 || seen[t]) return false;
+      seen[t] = true; return true;
+    });
+    var foundId = null;
+    for (var ti = 0; ti < terms.length; ti++) {
+      try {
+        var sResp = UrlFetchApp.fetch('https://api.attio.com/v2/objects/companies/records/query', {
+          method: 'post',
+          headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+          payload: JSON.stringify({ filter: { name: { '$contains': terms[ti] } }, limit: 1 }),
+          muteHttpExceptions: true
+        });
+        var sData = JSON.parse(sResp.getContentText());
+        var sRecords = sData.data || [];
+        if (sRecords.length > 0) { foundId = sRecords[0].id.record_id; break; }
+      } catch(e) {}
     }
+    searchFallback[sheetName.toLowerCase()] = foundId;
   }
 
   if (needsSearch.length > 0) {
