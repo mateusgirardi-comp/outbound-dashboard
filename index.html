@@ -673,6 +673,15 @@ function getCon(campaign, bdr) {
 
 function pct(val) { return (val * 100).toFixed(1) + '%'; }
 
+function getAttioMql(bdr, month) {
+  const a = _data && _data.attioMqls;
+  if (!a) return null;
+  const bucket = (month === 'all') ? a.all : (a[month] || null);
+  if (!bucket) return null;
+  if (bdr === 'total') return bucket.total || 0;
+  return bucket[bdr] || 0;
+}
+
 function convClass(val) {
   if (val >= 0.2)  return 'badge-green';
   if (val >= 0.05) return 'badge-yellow';
@@ -795,14 +804,27 @@ function renderKPIs() {
         <span><span class="dot-mat"></span>${getVal(t.mensagens,'mat',_month,_sprint)} Mat</span>
       </div>
     </div>
-    <div class="kpi-card accent" onclick="openModal('mqls')">
-      <div class="kpi-label">MQLs</div>
-      <div class="kpi-value red">${mql} <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${getMqlTarget()}</span></div>
-      <div class="kpi-sub">
-        <span><span class="dot-cath"></span>${getVal(t.mqls,'cath',_month,_sprint)} Cath</span>
-        <span><span class="dot-mat"></span>${getVal(t.mqls,'mat',_month,_sprint)} Mat</span>
-      </div>
-    </div>
+    ${(() => {
+      const attioTotal = getAttioMql(_bdr, _month);
+      const attioCath  = getAttioMql('cath', _month);
+      const attioMat   = getAttioMql('mat',  _month);
+      const hasAttio   = attioTotal !== null;
+      const displayVal = hasAttio ? attioTotal : mql;
+      const subCath    = hasAttio ? attioCath  : getVal(t.mqls,'cath',_month,_sprint);
+      const subMat     = hasAttio ? attioMat   : getVal(t.mqls,'mat',_month,_sprint);
+      const labelSuffix = hasAttio
+        ? ' <span style="font-size:10px;font-weight:600;letter-spacing:0.06em;color:var(--accent-dark);background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:4px;vertical-align:middle">CRM</span>'
+        : '';
+      return `
+      <div class="kpi-card accent" onclick="openModal('mqls')">
+        <div class="kpi-label">MQLs${labelSuffix}</div>
+        <div class="kpi-value red">${displayVal} <span style="font-size:15px;font-weight:400;color:var(--muted)">/ ${getMqlTarget()}</span></div>
+        <div class="kpi-sub">
+          <span><span class="dot-cath"></span>${subCath} Cath</span>
+          <span><span class="dot-mat"></span>${subMat} Mat</span>
+        </div>
+      </div>`;
+    })()}
     <div class="kpi-card" onclick="openModal('conv')">
       <div class="kpi-label">Conversão (empresa)</div>
       <div class="kpi-value ${convRate >= 0.1 ? 'green' : ''}">${pct(convRate)}</div>
@@ -1156,18 +1178,30 @@ function openModal(kpi) {
         { label: 'Msgs / Contato', value: con > 0 ? (msg/con).toFixed(1) : '—' }
       ]
     },
-    mqls: {
-      label: 'MQLs',
-      value: `${mql} / ${getMqlTarget()}`,
-      desc: `Lead qualificado pelo marketing que demonstrou interesse suficiente para entrar no pipeline de vendas. Um lead vira MQL quando o campo "Status Geral" na planilha é marcado como "MQL". Meta do mês: ${getMqlTarget()} MQLs. Progresso atual: ${((mql/getMqlTarget())*100).toFixed(0)}%.`,
-      formula: 'COUNT(linhas onde Status Geral = "MQL")',
-      breakdown: [
-        { label: 'Cath',     value: getVal(t.mqls,'cath',_month,_sprint) },
-        { label: 'Mat',      value: getVal(t.mqls,'mat',_month,_sprint)  },
-        { label: 'Meta',     value: getMqlTarget() },
-        { label: 'Faltam',   value: Math.max(0, getMqlTarget() - mql) }
-      ]
-    },
+    mqls: (() => {
+      const attioTotal = getAttioMql('total', _month);
+      const hasAttio = attioTotal !== null;
+      const displayVal = hasAttio ? attioTotal : mql;
+      const attioCath = getAttioMql('cath', _month) ?? '—';
+      const attioMat  = getAttioMql('mat',  _month) ?? '—';
+      const target = getMqlTarget();
+      return {
+        label: hasAttio ? 'MQLs (CRM · Attio)' : 'MQLs',
+        value: `${displayVal} / ${target}`,
+        desc: hasAttio
+          ? `MQLs registrados no Attio CRM — deals com deal_source Outbound ou LinkedIn Ads e campo date_mql preenchido. Meta do mês: ${target}. Progresso: ${target > 0 ? ((displayVal/target)*100).toFixed(0) : 0}%.`
+          : `Lead qualificado pelo marketing. Meta do mês: ${target}. Progresso: ${target > 0 ? ((mql/target)*100).toFixed(0) : 0}%.`,
+        formula: hasAttio
+          ? 'Attio: deals onde deal_source ∈ {Outbound, LinkedIn Ads} e date_mql está no mês selecionado'
+          : 'COUNT(linhas onde Status Geral = "MQL")',
+        breakdown: [
+          { label: 'Cath',   value: hasAttio ? attioCath : getVal(t.mqls,'cath',_month,_sprint) },
+          { label: 'Mat',    value: hasAttio ? attioMat  : getVal(t.mqls,'mat',_month,_sprint) },
+          { label: 'Meta',   value: target },
+          { label: 'Faltam', value: Math.max(0, target - displayVal) }
+        ]
+      };
+    })(),
     conv: {
       label: 'Conversão (empresa)',
       value: pct(convRate),

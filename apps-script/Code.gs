@@ -41,7 +41,8 @@ var IGNORED_SHEETS = [
   'EngagementSample', 'CompaniesEngagement', 'table_import',
   'de-para', 'sales_pipe', 'clean_formula',
   'Companies CRM 20d9777bf857815ba546f7768e4ca2cc', 'View',
-  'finserv', 'white_collars'
+  'finserv', 'white_collars',
+  'Edge Cases 1', 'Edge Cases 2'
 ];
 
 // ============================================================
@@ -60,9 +61,30 @@ function doGet(e) {
       .createTextOutput(JSON.stringify(getDebugMsgsByMonth(params.month || 'MAR')))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  if (params.debug === 'sheets') {
+    return ContentService
+      .createTextOutput(JSON.stringify(getDebugSheets()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService
     .createTextOutput(JSON.stringify(getData()))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getDebugSheets() {
+  var result = [];
+  MONTHS_CONFIG.forEach(function(monthCfg) {
+    var ss = SpreadsheetApp.openById(monthCfg.spreadsheetId);
+    ss.getSheets().forEach(function(sheet) {
+      var name = sheet.getName();
+      var vals = sheet.getDataRange().getValues();
+      var row0 = vals.length > 0 ? vals[0].map(function(h){return String(h).trim();}).filter(Boolean) : [];
+      var row1 = vals.length > 1 ? vals[1].map(function(h){return String(h).trim();}).filter(Boolean) : [];
+      var ignored = IGNORED_SHEETS.indexOf(name) > -1;
+      result.push({ month: monthCfg.id, name: name, ignored: ignored, row1: row0, row2: row1 });
+    });
+  });
+  return result;
 }
 
 // ============================================================
@@ -108,12 +130,16 @@ function getData() {
 
   var reach = computeAllReachStats();
 
+  var attioMqls = null;
+  try { attioMqls = getAttioMqls(); } catch(e) { attioMqls = null; }
+
   return {
     lastUpdated: new Date().toISOString(),
     months: monthsMeta,
     totals: totals,
     campaigns: campaigns,
-    reach: reach
+    reach: reach,
+    attioMqls: attioMqls
   };
 }
 
@@ -136,8 +162,8 @@ function getMonthSprint(date) {
 // ============================================================
 
 var COL_ALIASES = {
-  nome:    ['nome', 'lead_nome'],
-  empresa: ['empresa', 'company_name'],
+  nome:    ['nome', 'lead_nome', 'nomelead', 'full name', 'nome do participante'],
+  empresa: ['empresa', 'company_name', 'nomeempresa', 'company', 'nome da empresa'],
   bdr:     ['bdr'],
   status:  ['status geral']
 };
@@ -151,11 +177,25 @@ function findColIdx(headers, aliases) {
   return -1;
 }
 
-function isCampaignSheet(name, headers) {
-  if (IGNORED_SHEETS.indexOf(name) > -1) return false;
+function hasRequiredCols(headers) {
   return findColIdx(headers, COL_ALIASES.nome)    > -1 &&
          findColIdx(headers, COL_ALIASES.empresa) > -1 &&
          findColIdx(headers, COL_ALIASES.bdr)     > -1;
+}
+
+function isCampaignSheet(name, headers) {
+  if (IGNORED_SHEETS.indexOf(name) > -1) return false;
+  return hasRequiredCols(headers);
+}
+
+// Returns { headers, dataStart } trying row 0 first, then row 1
+function detectHeaders(allValues) {
+  if (allValues.length < 2) return null;
+  var h0 = allValues[0].map(function(h) { return String(h).trim(); });
+  var h1 = allValues[1].map(function(h) { return String(h).trim(); });
+  if (hasRequiredCols(h0)) return { headers: h0, dataStart: 1 };
+  if (hasRequiredCols(h1)) return { headers: h1, dataStart: 2 };
+  return null;
 }
 
 // ============================================================
@@ -206,10 +246,12 @@ function addCount(obj, bdrKey, monthSprint, fallbackMonth) {
 function processCampaignSheet(sheet, monthId) {
   var name = sheet.getName();
   var allValues = sheet.getDataRange().getValues();
-  if (allValues.length < 3) return null;
+  if (allValues.length < 2) return null;
 
-  var headers = allValues[1].map(function(h) { return String(h).trim(); });
-  if (!isCampaignSheet(name, headers)) return null;
+  var detected = detectHeaders(allValues);
+  if (!detected || !isCampaignSheet(name, detected.headers)) return null;
+  var headers = detected.headers;
+  var dataStart = detected.dataStart;
 
   var nomeIdx    = findColIdx(headers, COL_ALIASES.nome);
   var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
@@ -228,7 +270,7 @@ function processCampaignSheet(sheet, monthId) {
   var mensagens    = emptyBDRMetric();
   var mqls         = emptyBDRMetric();
 
-  for (var r = 2; r < allValues.length; r++) {
+  for (var r = dataStart; r < allValues.length; r++) {
     var row = allValues[r];
     var nome = String(row[nomeIdx] || '').trim();
     if (!nome) continue;
@@ -405,9 +447,11 @@ function computeAllReachStats() {
       var name = sheet.getName();
       if (monthCfg.allowedSheets !== null && monthCfg.allowedSheets.indexOf(name) === -1) continue;
       var allValues = sheet.getDataRange().getValues();
-      if (allValues.length < 3) continue;
-      var headers = allValues[1].map(function(h) { return String(h).trim(); });
-      if (!isCampaignSheet(name, headers)) continue;
+      if (allValues.length < 2) continue;
+      var detected = detectHeaders(allValues);
+      if (!detected || !isCampaignSheet(name, detected.headers)) continue;
+      var headers = detected.headers;
+      var dataStart = detected.dataStart;
 
       var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
       var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
@@ -418,7 +462,7 @@ function computeAllReachStats() {
       }
       if (dataEnvioIdxs.length === 0) continue;
 
-      for (var r = 2; r < allValues.length; r++) {
+      for (var r = dataStart; r < allValues.length; r++) {
         var row = allValues[r];
         var empresa = String(row[empresaIdx] || '').trim();
         if (!empresa) continue;
@@ -474,6 +518,80 @@ function computeAllReachStats() {
 }
 
 // ============================================================
+// ATTIO INTEGRATION
+// ============================================================
+
+var ATTIO_OUTBOUND_SOURCES = ['Outbound', 'LinkedIn Ads'];
+
+function getAttioMqls() {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('ATTIO_API_KEY');
+  if (!apiKey) return null;
+
+  // Build year-month prefix → monthId map (e.g. '2026-03' → 'MAR')
+  var prefixToId = {};
+  MONTHS_CONFIG.forEach(function(m) {
+    var d = m.sprints[0].start;
+    var prefix = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+    prefixToId[prefix] = m.id;
+  });
+
+  var result = { all: { total: 0, cath: 0, mat: 0 } };
+  MONTHS_CONFIG.forEach(function(m) { result[m.id] = { total: 0, cath: 0, mat: 0 }; });
+
+  var offset = 0;
+  var hasMore = true;
+
+  while (hasMore) {
+    var resp = UrlFetchApp.fetch('https://api.attio.com/v2/objects/deals/records/query', {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({ limit: 500, offset: offset }),
+      muteHttpExceptions: true
+    });
+
+    var data = JSON.parse(resp.getContentText());
+    var records = data.data || [];
+    if (records.length === 0) { hasMore = false; break; }
+
+    for (var i = 0; i < records.length; i++) {
+      var vals = records[i].values || {};
+
+      // Filter: must be outbound source
+      var srcArr = vals.deal_source || [];
+      var source = (srcArr[0] && srcArr[0].option) ? srcArr[0].option.title : null;
+      if (ATTIO_OUTBOUND_SOURCES.indexOf(source) === -1) continue;
+
+      // Must have date_mql
+      var dateMqlArr = vals.date_mql || [];
+      if (!dateMqlArr[0] || !dateMqlArr[0].value) continue;
+      var prefix = String(dateMqlArr[0].value).slice(0, 7); // "2026-03"
+
+      // BDR
+      var bdrArr = vals.bdr_associated || [];
+      var bdrName = (bdrArr[0] && bdrArr[0].option) ? bdrArr[0].option.title : null;
+      var bdrKey = bdrName === 'Cath' ? 'cath' : (bdrName === 'Mateus Girardi' ? 'mat' : null);
+
+      result.all.total++;
+      if (bdrKey) result.all[bdrKey]++;
+
+      var monthId = prefixToId[prefix];
+      if (monthId && result[monthId]) {
+        result[monthId].total++;
+        if (bdrKey) result[monthId][bdrKey]++;
+      }
+    }
+
+    offset += records.length;
+    if (records.length < 500) hasMore = false;
+  }
+
+  return result;
+}
+
+// ============================================================
 // DEBUG
 // ============================================================
 
@@ -487,14 +605,16 @@ function getDebugMqls() {
       var name = sheet.getName();
       if (monthCfg.allowedSheets !== null && monthCfg.allowedSheets.indexOf(name) === -1) continue;
       var allValues = sheet.getDataRange().getValues();
-      if (allValues.length < 3) continue;
-      var headers = allValues[1].map(function(h) { return String(h).trim(); });
-      if (!isCampaignSheet(name, headers)) continue;
+      if (allValues.length < 2) continue;
+      var detected = detectHeaders(allValues);
+      if (!detected || !isCampaignSheet(name, detected.headers)) continue;
+      var headers = detected.headers;
+      var dataStart = detected.dataStart;
       var nomeIdx    = findColIdx(headers, COL_ALIASES.nome);
       var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
       var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
       var statusIdx  = findColIdx(headers, COL_ALIASES.status);
-      for (var r = 2; r < allValues.length; r++) {
+      for (var r = dataStart; r < allValues.length; r++) {
         var row = allValues[r];
         var statusStr = String(statusIdx >= 0 ? row[statusIdx] : '').trim();
         if (statusStr.toUpperCase() === 'MQL') {
@@ -543,9 +663,11 @@ function getDebugMsgsByMonth(targetMonthId) {
       var name = sheet.getName();
       if (monthCfg.allowedSheets !== null && monthCfg.allowedSheets.indexOf(name) === -1) continue;
       var allValues = sheet.getDataRange().getValues();
-      if (allValues.length < 3) continue;
-      var headers = allValues[1].map(function(h) { return String(h).trim(); });
-      if (!isCampaignSheet(name, headers)) continue;
+      if (allValues.length < 2) continue;
+      var detected = detectHeaders(allValues);
+      if (!detected || !isCampaignSheet(name, detected.headers)) continue;
+      var headers = detected.headers;
+      var dataStart = detected.dataStart;
 
       var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
       var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
@@ -556,7 +678,7 @@ function getDebugMsgsByMonth(targetMonthId) {
       }
       if (dataEnvioIdxs.length === 0) continue;
 
-      for (var r = 2; r < allValues.length; r++) {
+      for (var r = dataStart; r < allValues.length; r++) {
         var row = allValues[r];
         var empresa = String(row[empresaIdx] || '').trim();
         if (!empresa) continue;
