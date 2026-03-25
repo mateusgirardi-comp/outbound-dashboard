@@ -134,9 +134,10 @@ function getData() {
   try { attioMqls = getAttioMqls(); } catch(e) { attioMqls = null; }
 
   var contacts = getContactsData();
+  var uniqueCompanies = contacts.map(function(c){ return c.empresa; }).filter(function(v,i,a){ return a.indexOf(v) === i; });
 
   var attioCompanyLinks = null;
-  try { attioCompanyLinks = getAttioCompanyLinks(); } catch(e) { attioCompanyLinks = null; }
+  try { attioCompanyLinks = getAttioCompanyLinks(uniqueCompanies); } catch(e) { attioCompanyLinks = null; }
 
   return {
     lastUpdated: new Date().toISOString(),
@@ -613,17 +614,21 @@ function getContactsData() {
 
 function normalizeCompanyName(name) {
   return String(name)
+    .split(/\s*\|\s*/)[0]  // strip " | description" suffix (e.g. "55PBX | Telecom e PABX na nuvem")
+    .trim()
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // remove acentos
-    .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo)\b/g, '')
+    .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo|tecnologia|technology|tech|solucoes|soluções|sistemas|system|systems|servicos|services|consultoria|consulting)\b/g, '')
     .replace(/[^a-z0-9\s]/g, '')  // remove pontuação
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function getAttioCompanyLinks() {
+function getAttioCompanyLinks(sheetCompanyNames) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('ATTIO_API_KEY');
   if (!apiKey) return null;
+
+  sheetCompanyNames = sheetCompanyNames || [];
 
   // Dois mapas: exact (lowercase) e normalized
   var exactMap      = {}; // name.toLowerCase() → record_id
@@ -634,10 +639,7 @@ function getAttioCompanyLinks() {
   while (hasMore) {
     var resp = UrlFetchApp.fetch('https://api.attio.com/v2/objects/companies/records/query', {
       method: 'post',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
       payload: JSON.stringify({ limit: 500, offset: offset }),
       muteHttpExceptions: true
     });
@@ -659,6 +661,46 @@ function getAttioCompanyLinks() {
 
     offset += records.length;
     if (records.length < 500) hasMore = false;
+  }
+
+  // Para empresas sem match, buscar no Attio por nome ($contains) — resultado em cache 6h
+  var unmatched = sheetCompanyNames.filter(function(name) {
+    return !exactMap[name.toLowerCase()] && !normalizedMap[normalizeCompanyName(name)];
+  });
+
+  var cache = CacheService.getScriptCache();
+  var cachedJson = cache.get('attio_search_fallback');
+  var searchFallback = cachedJson ? JSON.parse(cachedJson) : {};
+
+  var needsSearch = unmatched.filter(function(name) {
+    return !(name.toLowerCase() in searchFallback);
+  });
+
+  for (var j = 0; j < needsSearch.length; j++) {
+    var sheetName = needsSearch[j];
+    var searchTerm = sheetName.split(/\s*\|\s*/)[0].trim();
+    try {
+      var sResp = UrlFetchApp.fetch('https://api.attio.com/v2/objects/companies/records/query', {
+        method: 'post',
+        headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+        payload: JSON.stringify({ filter: { name: { '$contains': searchTerm } }, limit: 1 }),
+        muteHttpExceptions: true
+      });
+      var sData = JSON.parse(sResp.getContentText());
+      var sRecords = sData.data || [];
+      searchFallback[sheetName.toLowerCase()] = sRecords.length > 0 ? sRecords[0].id.record_id : null;
+    } catch(e) {
+      searchFallback[sheetName.toLowerCase()] = null;
+    }
+  }
+
+  if (needsSearch.length > 0) {
+    try { cache.put('attio_search_fallback', JSON.stringify(searchFallback), 21600); } catch(e) {}
+  }
+
+  // Mesclar resultados da busca no exactMap
+  for (var k in searchFallback) {
+    if (searchFallback[k] && !exactMap[k]) exactMap[k] = searchFallback[k];
   }
 
   return { exact: exactMap, normalized: normalizedMap };
