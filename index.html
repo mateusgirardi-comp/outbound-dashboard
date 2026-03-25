@@ -361,8 +361,8 @@
     .company-row:first-child td { border-top: none; }
     .company-row .company-name { color: var(--text); font-size: 12px; }
     .company-row .company-meta { font-weight: 400; margin-left: 10px; }
-    a.attio-link { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border); }
-    a.attio-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
+    a.attio-link { color: var(--accent); text-decoration: none; font-weight: 600; }
+    a.attio-link:hover { text-decoration: underline; opacity: 0.8; }
 
     .status-mql    { background: var(--accent-light); color: var(--accent); }
     .status-other  { background: #f3f4f6; color: var(--muted); }
@@ -1432,21 +1432,18 @@ function renderContacts() {
   const empresas = Object.keys(groups).sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
   let html = '';
 
-  const linksData = _data && _data.attioCompanyLinks;
-  const exactMap      = (linksData && linksData.exact)      || {};
-  const normalizedMap = (linksData && linksData.normalized) || {};
+  const linksData    = (_data && _data.attioCompanyLinks) || {};
+  const exactMap     = linksData.exact      || {};
+  const normalizedMap = linksData.normalized || {};
 
-  function normalizeCompany(name) {
-    return name.toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo)\b/g, '')
-      .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\s+/g, ' ').trim();
-  }
+  const normalizeCompany = name => name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo)\b/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ').trim();
 
-  function getAttioId(empresa) {
-    return exactMap[empresa.toLowerCase()] || normalizedMap[normalizeCompany(empresa)] || null;
-  }
+  const getAttioId = empresa =>
+    exactMap[empresa.toLowerCase()] || normalizedMap[normalizeCompany(empresa)] || null;
 
   empresas.forEach(empresa => {
     const rows = groups[empresa];
