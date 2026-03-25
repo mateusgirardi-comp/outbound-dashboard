@@ -596,15 +596,15 @@
     .prosp-cell-select:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
     td.prosp-fup-locked { opacity: 0.3; pointer-events: none; }
 
-    /* Date picker customizado — exibe dd/mm, input invisível por cima */
-    .prosp-date-wrap { position: relative; display: flex; align-items: center; height: 100%; }
-    .prosp-date-display { font-size: 12px; color: var(--text); white-space: nowrap; }
+    /* Date picker customizado — span clicável abre showPicker() */
+    .prosp-date-wrap { display: inline-flex; align-items: center; cursor: pointer; }
+    .prosp-date-display { font-size: 12px; color: var(--text); white-space: nowrap; user-select: none; }
     .prosp-date-display.empty { color: var(--muted); }
+    .prosp-date-display:hover:not(.locked) { text-decoration: underline dotted; }
     .prosp-date-input {
-      position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%;
-      cursor: pointer; border: none; background: transparent; padding: 0;
+      position: absolute; width: 1px; height: 1px; opacity: 0;
+      border: none; padding: 0; pointer-events: none;
     }
-    .prosp-date-input:disabled { cursor: not-allowed; }
 
     .prosp-status-pill {
       display: inline-block; padding: 2px 8px; border-radius: 4px;
@@ -1892,6 +1892,13 @@ async function loadLeads(force = false) {
   }
 }
 
+function openDatePicker(wrap) {
+  const input = wrap.querySelector('input[type="date"]');
+  if (input && !input.disabled) {
+    try { input.showPicker(); } catch(e) { input.click(); }
+  }
+}
+
 function updateDateDisplay(input) {
   const wrap = input.closest('.prosp-date-wrap');
   if (!wrap) return;
@@ -2006,14 +2013,14 @@ function renderProspecting() {
           </select>
         </td>
         <td class="prosp-col-fup-date${lkDt ? ' prosp-fup-locked' : ''}">
-          <div class="prosp-date-wrap">
-            <span class="prosp-date-display${f.date ? '' : ' empty'}" data-field="fup${i}_date">${fmtDdMm(f.date)}</span>
+          <div class="prosp-date-wrap"${lkDt ? '' : ` onclick="openDatePicker(this)"`}>
+            <span class="prosp-date-display${f.date ? '' : ' empty'}">${fmtDdMm(f.date)}</span>
             <input class="prosp-date-input" type="date" data-field="fup${i}_date"
               value="${escHtml(f.date)}" onchange="saveLeadCell(this);updateDateDisplay(this)"${lkDt ? ' disabled' : ''}>
           </div>
         </td>
         <td class="prosp-col-fup-ans${lkAns ? ' prosp-fup-locked' : ''}">
-          <div class="prosp-date-wrap">
+          <div class="prosp-date-wrap"${lkAns ? '' : ` onclick="openDatePicker(this)"`}>
             <span class="prosp-date-display${f.answered ? '' : ' empty'}">${fmtDdMm(f.answered)}</span>
             <input class="prosp-date-input" type="date" data-field="fup${i}_answered"
               value="${escHtml(f.answered)}" onchange="saveLeadCell(this);updateDateDisplay(this)"${lkAns ? ' disabled' : ''}>
