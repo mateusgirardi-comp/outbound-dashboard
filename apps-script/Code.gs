@@ -135,6 +135,9 @@ function getData() {
 
   var contacts = getContactsData();
 
+  var attioCompanyLinks = null;
+  try { attioCompanyLinks = getAttioCompanyLinks(); } catch(e) { attioCompanyLinks = null; }
+
   return {
     lastUpdated: new Date().toISOString(),
     months: monthsMeta,
@@ -142,7 +145,8 @@ function getData() {
     campaigns: campaigns,
     reach: reach,
     attioMqls: attioMqls,
-    contacts: contacts
+    contacts: contacts,
+    attioCompanyLinks: attioCompanyLinks
   };
 }
 
@@ -601,6 +605,47 @@ function getContactsData() {
   });
 
   return contacts;
+}
+
+// ============================================================
+// ATTIO COMPANY LINKS
+// ============================================================
+
+function getAttioCompanyLinks() {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('ATTIO_API_KEY');
+  if (!apiKey) return null;
+
+  var links = {}; // name (lowercase) → record_id
+  var offset = 0;
+  var hasMore = true;
+
+  while (hasMore) {
+    var resp = UrlFetchApp.fetch('https://api.attio.com/v2/objects/companies/records/query', {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({ limit: 500, offset: offset }),
+      muteHttpExceptions: true
+    });
+
+    var data = JSON.parse(resp.getContentText());
+    var records = data.data || [];
+    if (records.length === 0) { hasMore = false; break; }
+
+    for (var i = 0; i < records.length; i++) {
+      var r = records[i];
+      var nameArr = r.values && r.values.name ? r.values.name : [];
+      var name = nameArr[0] && nameArr[0].value ? String(nameArr[0].value).trim() : null;
+      if (name) links[name.toLowerCase()] = r.id.record_id;
+    }
+
+    offset += records.length;
+    if (records.length < 500) hasMore = false;
+  }
+
+  return links;
 }
 
 // ============================================================

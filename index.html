@@ -1430,13 +1430,19 @@ function renderContacts() {
   const empresas = Object.keys(groups).sort((a, b) => a.toLowerCase() < b.toLowerCase() ? -1 : 1);
   let html = '';
 
+  const links = (_data && _data.attioCompanyLinks) || {};
+
   empresas.forEach(empresa => {
     const rows = groups[empresa];
     const lastMsg = rows.map(r => r.ultima_mensagem).filter(Boolean).sort().pop();
     const bdrs = [...new Set(rows.map(r => r.bdr).filter(Boolean))].join(', ');
+    const recordId = links[empresa.toLowerCase()];
+    const empresaLabel = recordId
+      ? `<a href="https://app.attio.com/comp-tech/company/${recordId}/overview" target="_blank" style="color:var(--text);text-decoration:none;border-bottom:1px solid var(--border)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text)'">${empresa}</a>`
+      : empresa;
     html += `<tr class="company-row">
       <td colspan="7">
-        <span class="company-name">${empresa}</span>
+        <span class="company-name">${empresaLabel}</span>
         <span class="company-meta">${rows.length} contato${rows.length > 1 ? 's' : ''} · ${bdrs || '—'} · última: ${fmtDateShort(lastMsg)}</span>
       </td>
     </tr>`;
