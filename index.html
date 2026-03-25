@@ -298,14 +298,58 @@
     .bdr-metric-value { font-size: 24px; font-weight: 700; color: var(--text); }
     .bdr-metric-value.accent { color: var(--accent); }
 
-    /* ── View Toggle ── */
-    #view-toggle-btn {
-      padding: 5px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);
-      background: transparent; color: rgba(255,255,255,0.85); cursor: pointer;
-      font-size: 13px; font-weight: 500; font-family: inherit;
-      transition: all 0.15s; white-space: nowrap;
+    /* ── Hamburger ── */
+    .hamburger-btn {
+      background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; justify-content: center;
+      gap: 5px; padding: 6px 4px; border-radius: 6px;
+      transition: background 0.15s;
     }
-    #view-toggle-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .hamburger-btn:hover { background: rgba(255,255,255,0.15); }
+    .hamburger-btn span {
+      display: block; width: 20px; height: 2px;
+      background: #fff; border-radius: 2px;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35); z-index: 200;
+    }
+    .sidebar-overlay.open { display: block; }
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 260px; background: var(--card);
+      box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+      z-index: 201; display: flex; flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.22s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-header {
+      height: 56px; background: var(--accent);
+      display: flex; align-items: center;
+      padding: 0 20px;
+    }
+    .sidebar-header span {
+      color: #fff; font-weight: 700; font-size: 14px;
+    }
+    .sidebar-nav { padding: 12px 0; flex: 1; }
+    .sidebar-nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 20px; cursor: pointer;
+      font-size: 14px; font-weight: 500; color: var(--text);
+      border-left: 3px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+      user-select: none;
+    }
+    .sidebar-nav-item:hover { background: var(--bg); }
+    .sidebar-nav-item.active {
+      background: var(--accent-light);
+      color: var(--accent); border-left-color: var(--accent);
+      font-weight: 600;
+    }
+    .sidebar-nav-item .nav-icon { font-size: 17px; width: 22px; text-align: center; }
 
     /* ── Contacts View ── */
     #contacts-view { display: none; }
@@ -518,14 +562,34 @@
   </div>
 </div>
 
+<!-- Sidebar overlay -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span>Menu</span>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="sidebar-nav-item active" id="nav-dashboard" onclick="showView('dashboard')">
+      <span class="nav-icon">📊</span> Acompanhamento mensal
+    </div>
+    <div class="sidebar-nav-item" id="nav-contacts" onclick="showView('contacts')">
+      <span class="nav-icon">🏢</span> Empresas prospectadas
+    </div>
+  </nav>
+</div>
+
 <header>
     <div class="header-left">
+      <button class="hamburger-btn" onclick="openSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
       <h1>Outbound Dashboard</h1>
       <div class="header-divider"></div>
       <span class="header-sub" id="header-sub">Comp · 2026</span>
     </div>
     <div class="header-controls">
-      <button id="view-toggle-btn">Empresas →</button>
       <div id="dashboard-controls" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div class="sprint-tabs" id="month-tabs">
         <button class="sprint-tab" data-month="all">Todos</button>
@@ -1369,18 +1433,27 @@ function onModalEsc(e) {
   if (e.key === 'Escape') closeModalDirect();
 }
 
-// ── View switching ──
+// ── Sidebar + View switching ──
 let _view = 'dashboard';
 
-document.getElementById('view-toggle-btn').addEventListener('click', () => {
-  _view = _view === 'dashboard' ? 'contacts' : 'dashboard';
-  const btn = document.getElementById('view-toggle-btn');
-  btn.textContent = _view === 'dashboard' ? 'Empresas →' : '← Voltar';
-  document.getElementById('dashboard-controls').style.display  = _view === 'dashboard' ? 'flex'  : 'none';
-  document.getElementById('dashboard').style.display           = _view === 'dashboard' ? 'block' : 'none';
-  document.getElementById('contacts-view').style.display       = _view === 'contacts'  ? 'block' : 'none';
-  if (_view === 'contacts' && _data) renderContacts();
-});
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+function showView(view) {
+  _view = view;
+  document.getElementById('dashboard').style.display        = view === 'dashboard' ? 'block' : 'none';
+  document.getElementById('contacts-view').style.display    = view === 'contacts'  ? 'block' : 'none';
+  document.getElementById('dashboard-controls').style.display = view === 'dashboard' ? 'flex' : 'none';
+  document.getElementById('nav-dashboard').classList.toggle('active', view === 'dashboard');
+  document.getElementById('nav-contacts').classList.toggle('active', view === 'contacts');
+  closeSidebar();
+  if (view === 'contacts' && _data) renderContacts();
+}
 
 // ── Contacts view ──
 function fmtDateShort(iso) {
