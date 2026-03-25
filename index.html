@@ -590,13 +590,21 @@
     .prosp-col-email    { width: 160px; color: var(--muted); font-size: 12px; border-right: 2px solid var(--border) !important; }
     .prosp-col-status   { width: 135px; border-right: 2px solid var(--border) !important; }
     .prosp-col-fup-status { width: 105px; }
-    .prosp-col-fup-date   { width: 108px; }
-    .prosp-col-fup-ans    { width: 62px; border-right: 2px solid var(--border) !important; }
+    .prosp-col-fup-date   { width: 58px; }
+    .prosp-col-fup-ans    { width: 76px; border-right: 2px solid var(--border) !important; }
 
-    .prosp-cell-select:disabled, .prosp-cell-date:disabled {
-      opacity: 0.35; cursor: not-allowed; pointer-events: none;
+    .prosp-cell-select:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+    td.prosp-fup-locked { opacity: 0.3; pointer-events: none; }
+
+    /* Date picker customizado — exibe dd/mm, input invisível por cima */
+    .prosp-date-wrap { position: relative; display: flex; align-items: center; height: 100%; }
+    .prosp-date-display { font-size: 12px; color: var(--text); white-space: nowrap; }
+    .prosp-date-display.empty { color: var(--muted); }
+    .prosp-date-input {
+      position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%;
+      cursor: pointer; border: none; background: transparent; padding: 0;
     }
-    td.prosp-fup-locked { opacity: 0.35; }
+    .prosp-date-input:disabled { cursor: not-allowed; }
 
     .prosp-status-pill {
       display: inline-block; padding: 2px 8px; border-radius: 4px;
@@ -1884,6 +1892,22 @@ async function loadLeads(force = false) {
   }
 }
 
+function updateDateDisplay(input) {
+  const wrap = input.closest('.prosp-date-wrap');
+  if (!wrap) return;
+  const span = wrap.querySelector('.prosp-date-display');
+  if (!span) return;
+  const iso = input.value;
+  if (iso) {
+    const p = iso.split('-');
+    span.textContent = p.length >= 3 ? `${p[2]}/${p[1]}` : iso;
+    span.classList.remove('empty');
+  } else {
+    span.textContent = '—';
+    span.classList.add('empty');
+  }
+}
+
 function pillBg(styleMap, val) {
   if (!val || !styleMap[val]) return '';
   const bg = styleMap[val].match(/background:([^;]+)/);
@@ -1942,10 +1966,16 @@ function renderProspecting() {
   const FUP_OPTS    = ['', 'ANSWERED', 'NO ANSWER', 'WRONG NUMBER'];
   const ANS_OPTS    = ['', 'Sim', 'Não'];
 
+  const fmtDdMm = iso => {
+    if (!iso) return '—';
+    const p = iso.split('-');
+    return p.length >= 3 ? `${p[2]}/${p[1]}` : iso;
+  };
+  // célula fica locked se status geral preenchido E célula está vazia
+  const cellLocked = (locked, val) => locked && !val;
+
   document.getElementById('prosp-tbody').innerHTML = filtered.map(l => {
-    const locked = !!l.status; // FUPs bloqueados se status geral preenchido
-    const fupCls = locked ? ' prosp-fup-locked' : '';
-    const dis    = locked ? ' disabled' : '';
+    const locked = !!l.status;
 
     return `<tr data-row="${l.row}">
       <td class="prosp-col-company">${escHtml(l.company)}</td>
@@ -1963,24 +1993,31 @@ function renderProspecting() {
           ${opts(STATUS_OPTS, l.status)}
         </select>
       </td>
-      ${l.fups.map((f, i) => `
-        <td class="prosp-col-fup-status${fupCls}" style="${pillBg(PROSP_FUP_STYLE, f.status)}">
+      ${l.fups.map((f, i) => {
+        const lkSt  = cellLocked(locked, f.status);
+        const lkDt  = cellLocked(locked, f.date);
+        const lkAns = cellLocked(locked, f.answered);
+        return `
+        <td class="prosp-col-fup-status${lkSt  ? ' prosp-fup-locked' : ''}" style="${pillBg(PROSP_FUP_STYLE, f.status)}">
           <select class="prosp-cell-select" data-field="fup${i}_status"
             onchange="saveLeadCell(this);colorCell(this,PROSP_FUP_STYLE)"
-            style="${pillSelectStyle(PROSP_FUP_STYLE, f.status)}"${dis}>
+            style="${pillSelectStyle(PROSP_FUP_STYLE, f.status)}"${lkSt ? ' disabled' : ''}>
             ${opts(FUP_OPTS, f.status)}
           </select>
         </td>
-        <td class="prosp-col-fup-date${fupCls}">
-          <input class="prosp-cell-date" type="date" data-field="fup${i}_date"
-            value="${escHtml(f.date)}" onchange="saveLeadCell(this)"${dis}>
+        <td class="prosp-col-fup-date${lkDt ? ' prosp-fup-locked' : ''}">
+          <div class="prosp-date-wrap">
+            <span class="prosp-date-display${f.date ? '' : ' empty'}" data-field="fup${i}_date">${fmtDdMm(f.date)}</span>
+            <input class="prosp-date-input" type="date" data-field="fup${i}_date"
+              value="${escHtml(f.date)}" onchange="saveLeadCell(this);updateDateDisplay(this)"${lkDt ? ' disabled' : ''}>
+          </div>
         </td>
-        <td class="prosp-col-fup-ans${fupCls}">
-          <select class="prosp-cell-select" data-field="fup${i}_answered" onchange="saveLeadCell(this)"${dis}>
+        <td class="prosp-col-fup-ans${lkAns ? ' prosp-fup-locked' : ''}">
+          <select class="prosp-cell-select" data-field="fup${i}_answered" onchange="saveLeadCell(this)"${lkAns ? ' disabled' : ''}>
             ${opts(ANS_OPTS, f.answered)}
           </select>
-        </td>
-      `).join('')}
+        </td>`;
+      }).join('')}
     </tr>`;
   }).join('');
 }
@@ -2018,11 +2055,13 @@ async function saveLeadCell(el) {
     }
   }
 
-  // ── Lógica 2: preencher Status geral → bloqueia / desbloqueia todos os FUPs
+  // ── Lógica 2: preencher Status geral → bloqueia células FUP ainda vazias
   if (field === 'status') {
     tr.querySelectorAll('[data-field^="fup"]').forEach(input => {
-      input.disabled = !!value;
-      input.closest('td').classList.toggle('prosp-fup-locked', !!value);
+      const isEmpty = !input.value;
+      const shouldLock = !!value && isEmpty;
+      input.disabled = shouldLock;
+      input.closest('td').classList.toggle('prosp-fup-locked', shouldLock);
     });
   }
 
