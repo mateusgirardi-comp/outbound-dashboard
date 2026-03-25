@@ -468,6 +468,7 @@ function computeAllReachStats() {
 
       var empresaIdx = findColIdx(headers, COL_ALIASES.empresa);
       var bdrIdx     = findColIdx(headers, COL_ALIASES.bdr);
+      var nomeIdx    = findColIdx(headers, COL_ALIASES.nome);
       var headersLower = headers.map(function(h) { return String(h).toLowerCase().trim(); });
       var dataEnvioIdxs = [];
       for (var c = 0; c < headersLower.length; c++) {
