@@ -1436,7 +1436,8 @@ function renderContacts() {
   const exactMap     = linksData.exact      || {};
   const normalizedMap = linksData.normalized || {};
 
-  const normalizeCompany = name => name.toLowerCase()
+  const normalizeCompany = name => name.split(/\s*\|\s*/)[0].trim()
+    .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo)\b/g, '')
     .replace(/[^a-z0-9\s]/g, '')
