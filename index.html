@@ -299,22 +299,13 @@
     .bdr-metric-value.accent { color: var(--accent); }
 
     /* ── View Toggle ── */
-    .view-toggle {
-      display: flex;
-      background: rgba(0,0,0,0.15);
-      border-radius: 8px; padding: 3px; gap: 2px;
+    #view-toggle-btn {
+      padding: 5px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);
+      background: transparent; color: rgba(255,255,255,0.85); cursor: pointer;
+      font-size: 13px; font-weight: 500; font-family: inherit;
+      transition: all 0.15s; white-space: nowrap;
     }
-    .view-btn {
-      padding: 4px 14px; border-radius: 6px; border: none;
-      background: transparent; color: rgba(255,255,255,0.7); cursor: pointer;
-      font-size: 13px; font-weight: 500; transition: all 0.15s;
-      font-family: inherit;
-    }
-    .view-btn:hover { color: #fff; }
-    .view-btn.active {
-      background: #fff; color: var(--accent);
-      font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    }
+    #view-toggle-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
     /* ── Contacts View ── */
     #contacts-view { display: none; }
@@ -535,10 +526,7 @@
       <span class="header-sub" id="header-sub">Comp · 2026</span>
     </div>
     <div class="header-controls">
-      <div class="view-toggle">
-        <button class="view-btn active" data-view="dashboard">Dashboard</button>
-        <button class="view-btn" data-view="contacts">Empresas</button>
-      </div>
+      <button id="view-toggle-btn">Empresas →</button>
       <div id="dashboard-controls" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div class="sprint-tabs" id="month-tabs">
         <button class="sprint-tab" data-month="all">Todos</button>
@@ -1380,15 +1368,13 @@ function onModalEsc(e) {
 // ── View switching ──
 let _view = 'dashboard';
 
-document.querySelector('.view-toggle').addEventListener('click', e => {
-  const btn = e.target.closest('.view-btn');
-  if (!btn) return;
-  _view = btn.dataset.view;
-  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('dashboard-controls').style.display = _view === 'dashboard' ? 'flex' : 'none';
-  document.getElementById('dashboard').style.display    = _view === 'dashboard' ? 'block' : 'none';
-  document.getElementById('contacts-view').style.display = _view === 'contacts'  ? 'block' : 'none';
+document.getElementById('view-toggle-btn').addEventListener('click', () => {
+  _view = _view === 'dashboard' ? 'contacts' : 'dashboard';
+  const btn = document.getElementById('view-toggle-btn');
+  btn.textContent = _view === 'dashboard' ? 'Empresas →' : '← Voltar';
+  document.getElementById('dashboard-controls').style.display  = _view === 'dashboard' ? 'flex'  : 'none';
+  document.getElementById('dashboard').style.display           = _view === 'dashboard' ? 'block' : 'none';
+  document.getElementById('contacts-view').style.display       = _view === 'contacts'  ? 'block' : 'none';
   if (_view === 'contacts' && _data) renderContacts();
 });
 
