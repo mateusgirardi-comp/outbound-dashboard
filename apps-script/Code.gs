@@ -528,10 +528,11 @@ function getAttioMqls() {
   if (!apiKey) return null;
 
   // Build year-month prefix → monthId map (e.g. '2026-03' → 'MAR')
+  // Usa UTC para evitar bug de timezone no Apps Script
   var prefixToId = {};
   MONTHS_CONFIG.forEach(function(m) {
     var d = m.sprints[0].start;
-    var prefix = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+    var prefix = d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2);
     prefixToId[prefix] = m.id;
   });
 
