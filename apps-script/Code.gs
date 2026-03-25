@@ -76,7 +76,7 @@ function doGet(e) {
   }
   if (params.action === 'get_leads') {
     return ContentService
-      .createTextOutput(JSON.stringify({ leads: getLeadsData() }))
+      .createTextOutput(JSON.stringify({ leads: getLeadsData(), opts: getLeadsValidationOptions() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
   if (params.action === 'update_lead') {
@@ -1070,4 +1070,23 @@ function updateLeadCell(row, col, value) {
     }
   }
   cell.setValue(value);
+}
+
+function getLeadsValidationOptions() {
+  var sheet = getLeadsSheet();
+  function readValidation(row, col) {
+    try {
+      var v = sheet.getRange(row, col).getDataValidation();
+      if (!v) return [];
+      if (v.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
+        return v.getCriteriaValues()[0] || [];
+      }
+    } catch(e) {}
+    return [];
+  }
+  return {
+    status:    readValidation(3, 11),  // Status geral
+    fupStatus: readValidation(3, 12),  // Status Fase1 (FUP)
+    answered:  readValidation(3, 14)   // Respondeu?
+  };
 }
