@@ -1439,12 +1439,30 @@ function renderContacts() {
   const normalizeCompany = name => name.split(/\s*\|\s*/)[0].trim()
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo)\b/g, '')
+    .replace(/\b(s\.?a\.?|ltda\.?|me\.?|eireli\.?|epp\.?|inc\.?|llc\.?|corp\.?|group|grupo|tecnologia|technology|tech|solucoes|solucoes|sistemas|system|systems|servicos|services|consultoria|consulting)\b/g, '')
     .replace(/[^a-z0-9\s]/g, '')
     .replace(/\s+/g, ' ').trim();
 
-  const getAttioId = empresa =>
-    exactMap[empresa.toLowerCase()] || normalizedMap[normalizeCompany(empresa)] || null;
+  const _normKeys = Object.keys(normalizedMap);
+  const getAttioId = empresa => {
+    const lower = empresa.toLowerCase();
+    const norm = normalizeCompany(empresa);
+    if (exactMap[lower]) return exactMap[lower];
+    if (normalizedMap[norm]) return normalizedMap[norm];
+    // startsWith: "3s" matches "3s tecnologia"
+    if (norm.length >= 2) {
+      for (const k of _normKeys) {
+        if (k === norm || k.startsWith(norm + ' ')) return normalizedMap[k];
+      }
+    }
+    // contains: "a educa" found inside "mais a educacao"
+    if (norm.length >= 5) {
+      for (const k of _normKeys) {
+        if (k.includes(norm)) return normalizedMap[k];
+      }
+    }
+    return null;
+  };
 
   empresas.forEach(empresa => {
     const rows = groups[empresa];
