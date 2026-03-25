@@ -516,10 +516,7 @@
   </div>
 </div>
 
-<!-- Dashboard -->
-<div id="dashboard">
-
-  <header>
+<header>
     <div class="header-left">
       <h1>Outbound Dashboard</h1>
       <div class="header-divider"></div>
@@ -549,6 +546,9 @@
       </div><!-- end dashboard-controls -->
     </div>
   </header>
+
+<!-- Dashboard -->
+<div id="dashboard">
 
   <main>
 
@@ -673,10 +673,12 @@ async function init() {
 }
 
 function show(id) {
-  document.getElementById('loading').style.display      = id === 'loading'     ? 'flex'  : 'none';
-  document.getElementById('error-state').style.display  = id === 'error-state' ? 'flex'  : 'none';
-  document.getElementById('dashboard').style.display    = id === 'dashboard'   ? 'block' : 'none';
+  document.getElementById('loading').style.display       = id === 'loading'     ? 'flex'  : 'none';
+  document.getElementById('error-state').style.display   = id === 'error-state' ? 'flex'  : 'none';
+  document.getElementById('dashboard').style.display     = id === 'dashboard'   ? 'block' : 'none';
   document.getElementById('contacts-view').style.display = 'none';
+  // header sempre visível exceto no loading/error
+  document.querySelector('header').style.display = (id === 'loading' || id === 'error-state') ? 'none' : 'flex';
 }
 
 function scheduleRefresh() {
